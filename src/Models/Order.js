@@ -1,27 +1,29 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 const { Schema } = mongoose;
-export const orderSchema = new Schema({
+export const orderSchema = new Schema(
+  {
     customerId: {
-        type: Schema.Types.ObjectId,
-        ref: 'User'
+      type: Schema.Types.ObjectId,
+      ref: "User",
     },
     orderNo: String,
     orderItems: {
-        type: Array,
+      type: Array,
     },
     shippingAddress: {
-        type: Object
+      type: Object,
     },
     deliverySlots: {
-        type: Array
+      type: Array,
     },
     orderStatus: {
-        type: String,
-        enum: ['pending', 'confirmed', 'shipped'],
-        default: 'pending'
-    }
+      type: String,
+      enum: ["pending", "confirmed", "shipped", "decline"],
+      default: "pending",
+    },
+  },
+  { timestamps: true }
+);
 
-}, { timestamps: true });
-
-const Order = mongoose.model('Order', orderSchema);
+const Order = mongoose.model("Order", orderSchema);
 export default Order;

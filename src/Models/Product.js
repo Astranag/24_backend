@@ -128,6 +128,7 @@ const productSchema = new Schema(
         "preApproved",
         "sold",
         "deliveryApproved",
+        "deliveryNotApproved",
       ],
       default: "pending",
     },

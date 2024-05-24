@@ -3,7 +3,23 @@ import fs from "fs";
 import { sendEmail } from "../Utils/Email.js";
 import User from "../Models/User.js";
 import EmailData from "../Utils/EmailText.json" assert { type: "json" };
-
+import Order from "../Models/Order.js";
+export async function singleupdateOrder(updateOrder) {
+  try {
+    const updatedProduct = await Order.findByIdAndUpdate(
+      updateOrder._id,
+      updateOrder,
+      { new: true }
+    );
+    if (!updatedProduct) {
+      throw new Error("Order not found or update failed.");
+    }
+    return updatedProduct;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
 const addNewProduct = async (req, res) => {
   try {
     const {
@@ -139,7 +155,7 @@ const getProductsByUserId = async (req, res) => {
 const getAllApprovedProducts = async (req, res) => {
   try {
     const approvedProducts = await Product.find({
-      status: { $in: ["approved", "preApproved", "declined"] },
+      status: { $in: ["approved", "preApproved", "deliveryNotApproved"] },
       deleted: false,
     }).sort({ createdAt: -1 });
     if (approvedProducts?.length) {
@@ -547,8 +563,15 @@ const declineProductPayment = async (req, res) => {
         .status(404)
         .json({ success: 0, message: "Product not found." });
     }
-    product.status = "declined";
+    const order = await findOrderById(req.body.order_id);
+    if (!order) {
+      return res.status(404).json({ success: 0, message: "Order not found." });
+    }
+    order.orderStatus = "decline";
+    product.status = "deliveryNotApproved";
+
     console.log(product);
+    const updateOrder = await singleupdateOrder(order);
     const updatedProduct = await updateProduct(product);
     const user = await findUserById(customerId);
     if (!user) {
@@ -604,6 +627,16 @@ async function findProductById(productId) {
     throw error;
   }
 }
+async function findOrderById(orderId) {
+  try {
+    const order = await Order.findOne({ _id: orderId });
+    return order;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+}
+
 async function findUserById(userId) {
   try {
     const user = await User.findById(userId);
