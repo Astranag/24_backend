@@ -1,9 +1,18 @@
 import Product from "../Models/Product.js";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from 'url'; 
 import { sendEmail } from "../Utils/Email.js";
 import User from "../Models/User.js";
 import EmailData from "../Utils/EmailText.json" assert { type: "json" };
 import Order from "../Models/Order.js";
+import { v2 as cloudinary } from 'cloudinary';
+import { uploadToCloudinary } from '../Utils/Uploads.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+
+
 export async function singleupdateOrder(updateOrder) {
   try {
     const updatedProduct = await Order.findByIdAndUpdate(
@@ -20,106 +29,131 @@ export async function singleupdateOrder(updateOrder) {
     throw error;
   }
 }
-const addNewProduct = async (req, res) => {
-  try {
-    const {
-      posterId,
-      title,
-      price,
-      color,
-      category,
-      condition,
-      isQualityVerified,
-      rooms,
-      model,
-      description,
-      dimension,
-      location,
-      pickUpSlots,
-    } = req.body;
-    if (!posterId) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
+  const addNewProduct = async (req, res) => {
+    try {
+      const {
+        posterId,
+        title,
+        price,
+        color,
+        category,
+        condition,
+        isQualityVerified,
+        rooms,
+        model,
+        description,
+        dimension,
+        location,
+        pickUpSlots,
+      } = req.body;
+  
+      console.log('Received new product data:', req.body);
+  
+      if (!posterId) {
+        await cleanUpFiles(req.files);
+        return res.status(400).json({ message: "Please login first or user id not found." });
       }
-      return res
-        .status(400)
-        .json({ message: "Please login first or user id not found." });
-    }
-    if (!title || !price || !color || !category) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
+  
+      if (!title || !price || !color || !category) {
+        await cleanUpFiles(req.files);
+        return res.status(400).json({ message: "Missing required product details." });
       }
-      return res
-        .status(400)
-        .json({ message: "Missing required product details." });
-    }
-    const existingProduct = await Product.findOne({
-      title: title,
-      deleted: false,
-    });
-    if (existingProduct) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
+  
+      const existingProduct = await Product.findOne({ title, deleted: false });
+  
+      if (existingProduct) {
+        await cleanUpFiles(req.files);
+        return res.status(409).json({
+          success: false,
+          message: "Product with the same name already exists.",
+        });
       }
-      return res.status(409).json({
-        success: false,
-        message: "Product with the same name already exists.",
+  
+      if (!req.files || Object.keys(req.files).length < 1 || Object.keys(req.files).length > 5) {
+        await cleanUpFiles(req.files);
+        return res.status(400).json({ success: false, message: "Please upload 1 to 5 images." });
+      }
+  
+      console.log('Files to upload:', req.files);
+  
+      const tempDir = path.join(__dirname, "../../temp");
+      try {
+        await fs.mkdir(tempDir, { recursive: true });
+      } catch (err) {
+        console.error("Error creating temp directory:", err);
+      }
+  
+      const uploadPromises = Object.values(req.files).map((file) => {
+        const tempFilePath = path.join(tempDir, file.name);
+        return file.mv(tempFilePath).then(() => uploadToCloudinary(tempFilePath));
       });
-    }
-    const imageNames = req?.files?.map((file) => file.filename);
-    if (!imageNames || imageNames.length < 1 || imageNames.length > 5) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
-      return res
-        .status(400)
-        .json({ success: false, message: "Please upload 1 to 5 images." });
-    }
-    const newProduct = new Product({
-      posterId,
-      title,
-      price,
-      color,
-      imageNames,
-      category,
-      condition,
-      isQualityVerified,
-      rooms,
-      model,
-      description,
-      dimension: JSON.parse(dimension),
-      location: JSON.parse(location),
-      pickUpSlots,
-    });
-    await newProduct.save();
-    const user = await findUserById(newProduct.posterId);
-    if (!user) {
-      console.log("User who posted that product not found.");
-    }
-    if (process.env.SMTP2GO_API_KEY) {
-      console.log("EmailData?.uploadTexts >>>", EmailData?.uploadTexts);
-      await sendEmail({
-        newProduct,
-        user,
-        emailSubject: "Product Uploaded",
-        emailMsg: EmailData?.uploadTexts,
+  
+      const uploadResults = await Promise.all(uploadPromises);
+  
+      const imageUrls = uploadResults;
+  
+      const newProduct = new Product({
+        posterId,
+        title,
+        price,
+        color,
+        imageNames: imageUrls,
+        category,
+        condition,
+        isQualityVerified,
+        rooms,
+        model,
+        description,
+        dimension: JSON.parse(dimension),
+        location: JSON.parse(location),
+        pickUpSlots: JSON.parse(pickUpSlots),
       });
-    } else {
-      console.warn("SMTP2GO API key not found. Email sending disabled.");
+  
+      await newProduct.save();
+  
+      const user = await findUserById(newProduct.posterId);
+      if (!user) {
+        console.log("User who posted that product not found.");
+      }
+  
+      if (process.env.SMTP2GO_API_KEY) {
+        console.log("EmailData?.uploadTexts >>>", EmailData?.uploadTexts);
+        await sendEmail({
+          newProduct,
+          user,
+          emailSubject: "Product Uploaded",
+          emailMsg: EmailData?.uploadTexts,
+        });
+      } else {
+        console.warn("SMTP2GO API key not found. Email sending disabled.");
+      }
+  
+      res.status(201).json({
+        success: true,
+        message: "Product created successfully",
+        product: newProduct,
+      });
+    } catch (error) {
+      await cleanUpFiles(req.files);
+      console.error("Error creating product", error);
+      res.status(500).json({ success: false, message: "Internal server error." });
     }
-    res.status(201).json({
-      success: true,
-      message: "Product created successfully",
-      product: newProduct,
-    });
-  } catch (error) {
-    if (req.files) {
-      req.files.forEach((file) => fs.unlinkSync(file.path));
+  };
+  
+  const cleanUpFiles = async (files) => {
+    if (files) {
+      const deletePromises = Object.values(files).map(async (file) => {
+        try {
+          await fs.unlink(file.tempFilePath);
+          console.log(`Deleted file: ${file.tempFilePath}`);
+        } catch (err) {
+          console.error(`Error deleting file: ${file.tempFilePath}`, err);
+        }
+      });
+      await Promise.all(deletePromises);
     }
-    console.error("Error creating product", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
-};
+  };
+  
 const getAllProducts = async (req, res) => {
   try {
     const allProducts = await Product.find({ deleted: false });
@@ -130,6 +164,9 @@ const getAllProducts = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
+
+
 const getProductsByUserId = async (req, res) => {
   try {
     const { posterId } = req.params;
@@ -152,6 +189,7 @@ const getProductsByUserId = async (req, res) => {
     res.status(500).json({ success: 0, message: "Internal server error." });
   }
 };
+
 const getAllApprovedProducts = async (req, res) => {
   try {
     const approvedProducts = await Product.find({
@@ -171,6 +209,7 @@ const getAllApprovedProducts = async (req, res) => {
     res.status(500).json({ success: 0, message: "Internal server error." });
   }
 };
+
 const getAllPendingProducts = async (req, res) => {
   try {
     const pendingProducts = await Product.find({
@@ -335,12 +374,23 @@ const updateProductById = async (req, res) => {
         .status(404)
         .json({ success: 0, message: "Product not found." });
     }
-    if (req.files && req.files.length > 0) {
-      const imageNames = req.files?.map((file) => file.filename);
-      product.imageNames = [...existingImages, ...imageNames];
-    } else {
-      product.imageNames = existingImages;
-    }
+  if (req.files && req.files.length > 0) {
+  const uploadPromises = req.files.map((file) =>
+    cloudinary.uploader.upload(file.path, {
+      folder: "product_images",
+    })
+  );
+
+  const uploadResults = await Promise.all(uploadPromises);
+
+  const imageUrls = uploadResults.map((result) => result.secure_url);
+
+  product.imageNames = [...existingImages, ...imageUrls];
+
+  req.files.forEach((file) => fs.unlinkSync(file.path));
+} else {
+  product.imageNames = existingImages;
+}
     if (productData.dimension) {
       productData.dimension = JSON.parse(productData.dimension);
     }
