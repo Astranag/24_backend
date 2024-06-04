@@ -1,18 +1,16 @@
 import Product from "../Models/Product.js";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from 'url'; 
+import { fileURLToPath } from "url";
 import { sendEmail } from "../Utils/Email.js";
 import User from "../Models/User.js";
 import EmailData from "../Utils/EmailText.json" assert { type: "json" };
 import Order from "../Models/Order.js";
-import { v2 as cloudinary } from 'cloudinary';
-import { uploadToCloudinary } from '../Utils/Uploads.js';
+import { v2 as cloudinary } from "cloudinary";
+import { uploadToCloudinary } from "../Utils/Uploads.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-
 
 export async function singleupdateOrder(updateOrder) {
   try {
@@ -39,7 +37,6 @@ const addNewProduct = async (req, res) => {
       color,
       category,
       condition,
-      isQualityVerified,
       rooms,
       model,
       description,
@@ -48,15 +45,18 @@ const addNewProduct = async (req, res) => {
       pickUpSlots,
     } = req.body;
 
-    console.log('Received new product data:', req.body);
-    
+    console.log("Received new product data:", req.body);
 
     if (!posterId) {
-      return res.status(400).json({ message: "Please login first or user id not found." });
+      return res
+        .status(400)
+        .json({ message: "Please login first or user id not found." });
     }
 
     if (!title || !price || !color || !category) {
-      return res.status(400).json({ message: "Missing required product details." });
+      return res
+        .status(400)
+        .json({ message: "Missing required product details." });
     }
 
     const existingProduct = await Product.findOne({ title, deleted: false });
@@ -68,13 +68,23 @@ const addNewProduct = async (req, res) => {
       });
     }
 
-    if (!req.files || Object.keys(req.files).length < 1 || Object.keys(req.files).length > 5) {
-      return res.status(400).json({ success: false, message: "Please upload 1 to 5 images." });
+    if (
+      !req.files ||
+      Object.keys(req.files).length < 1 ||
+      Object.keys(req.files).length > 5
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Please upload 1 to 5 images." });
     }
 
-    console.log('Files to upload:', req.files);
+    console.log("Files to upload:", req.files);
 
-    const uploadPromises = Object.values(req.files).map((file) => {
+    const filesArray = Array.isArray(req.files.imageNames)
+      ? req.files.imageNames
+      : [req.files.imageNames];
+
+    const uploadPromises = filesArray.map((file) => {
       return cloudinary.uploader.upload(file.tempFilePath, {
         folder: "product_images",
       });
@@ -82,6 +92,47 @@ const addNewProduct = async (req, res) => {
 
     const uploadResults = await Promise.all(uploadPromises);
     const imageUrls = uploadResults.map((result) => result.secure_url);
+
+    let parsedDimension, parsedLocation, parsedPickUpSlots;
+    try {
+      parsedDimension = JSON.parse(dimension);
+    } catch (error) {
+      console.error("Error parsing dimension:", error);
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid JSON format in dimension field.",
+        });
+    }
+
+    try {
+      parsedLocation = JSON.parse(location);
+    } catch (error) {
+      console.error("Error parsing location:", error);
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid JSON format in location field.",
+        });
+    }
+
+    if (pickUpSlots && pickUpSlots !== "undefined") {
+      try {
+        parsedPickUpSlots = JSON.parse(pickUpSlots);
+      } catch (error) {
+        console.error("Error parsing pickUpSlots:", error);
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Invalid JSON format in pickUpSlots field.",
+          });
+      }
+    } else {
+      parsedPickUpSlots = []; // default to an empty array if pickUpSlots is 'undefined' or not provided
+    }
 
     const newProduct = new Product({
       posterId,
@@ -91,13 +142,12 @@ const addNewProduct = async (req, res) => {
       imageNames: imageUrls,
       category,
       condition,
-      isQualityVerified,
       rooms,
       model,
       description,
-      dimension: JSON.parse(dimension),
-      location: JSON.parse(location),
-      pickUpSlots: JSON.parse(pickUpSlots),
+      dimension: parsedDimension,
+      location: parsedLocation,
+      pickUpSlots: parsedPickUpSlots,
     });
 
     await newProduct.save();
@@ -129,7 +179,7 @@ const addNewProduct = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
-  
+
 const getAllProducts = async (req, res) => {
   try {
     const allProducts = await Product.find({ deleted: false });
@@ -140,8 +190,6 @@ const getAllProducts = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
-
-
 
 const getProductsByUserId = async (req, res) => {
   try {
@@ -341,14 +389,18 @@ const updateProductById = async (req, res) => {
     const { id } = req.params;
 
     if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
-      return res.status(400).json({ success: 0, message: "Invalid product ID." });
+      return res
+        .status(400)
+        .json({ success: 0, message: "Invalid product ID." });
     }
 
     const productData = req.body;
 
     const product = await findProductById(id);
     if (!product) {
-      return res.status(404).json({ success: 0, message: "Product not found." });
+      return res
+        .status(404)
+        .json({ success: 0, message: "Product not found." });
     }
 
     // Handle existing images
@@ -356,8 +408,8 @@ const updateProductById = async (req, res) => {
 
     // Handle image removal
     if (productData.removeImages) {
-      const imagesToRemove = productData.removeImages.split(',');
-      imageUrls = imageUrls.filter(image => !imagesToRemove.includes(image));
+      const imagesToRemove = productData.removeImages.split(",");
+      imageUrls = imageUrls.filter((image) => !imagesToRemove.includes(image));
     }
 
     // Handle new image uploads
@@ -453,7 +505,11 @@ const updateProductById = async (req, res) => {
       if (updatedProduct?.status === "declined") {
         const updatedPendingToDeclinedEmailMsg = {
           ...EmailData?.pendingToDeclined,
-          "2ndText": `${updatedProduct?.reason ? updatedProduct?.reason : "Reason not justified"}<br>`,
+          "2ndText": `${
+            updatedProduct?.reason
+              ? updatedProduct?.reason
+              : "Reason not justified"
+          }<br>`,
         };
 
         await sendEmail({
@@ -480,8 +536,6 @@ const updateProductById = async (req, res) => {
     res.status(500).json({ success: 0, message: "Internal server error." });
   }
 };
-
-
 
 const confirmProductPayment = async (req, res) => {
   try {
@@ -600,7 +654,6 @@ const declineProductPayment = async (req, res) => {
       return res
         .status(404)
         .json({ success: 0, message: "Product not found." });
-        
     }
     const order = await findOrderById(req.body.order_id);
     if (!order) {
