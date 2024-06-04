@@ -18,10 +18,14 @@
 
 # # All Products 
 
-# GET http://localhost:8000/api/product/all
+# GET http://localhost:8000/api/product/approveds
 # Content-Type: application/json
 
-# ### Create Admin User
+
+GET http://localhost:8000/api/product/all
+Content-Type: application/json
+
+# # ### Create Admin User
 # POST http://localhost:8000/api/user/register
 # Content-Type: application/json
 
@@ -42,69 +46,135 @@
 
 # # 
 
-# GET http://localhost:8000/api/order/all
+
+# GET http://localhost:8000/api/order/approved
+# Content-Type: application/json
+
+
+# GET http://localhost:8000/api/product/approveds
 # Content-Type: application/json
 
 
 
-POST http://localhost:8000/api/product/add
-Content-Type: multipart/form-data; boundary=boundary
 
---boundary
-Content-Disposition: form-data; name="posterId"
+# POST http://localhost:8000/api/product/add
+# Content-Type: multipart/form-data; boundary=boundary
 
-60d21b4667d0d8992e610c85
---boundary
-Content-Disposition: form-data; name="title"
+# --boundary
+# Content-Disposition: form-data; name="posterId"
 
-Test4 Product
---boundary
-Content-Disposition: form-data; name="price"
+# 60d21b4667d0d8992e610c85
+# --boundary
+# Content-Disposition: form-data; name="title"
 
-160.00
---boundary
-Content-Disposition: form-data; name="color"
+# Test36 Product
+# --boundary
+# Content-Disposition: form-data; name="price"
 
-NEW TEST 4
---boundary
-Content-Disposition: form-data; name="category"
+# 160.00
+# --boundary
+# Content-Disposition: form-data; name="color"
 
-TEST 4
---boundary
-Content-Disposition: form-data; name="condition"
+# Color
+# --boundary
+# Content-Disposition: form-data; name="category"
 
-new 
---boundary
-Content-Disposition: form-data; name="isQualityVerified"
+# TEST 4
+# --boundary
+# Content-Disposition: form-data; name="condition"
 
-true
---boundary
-Content-Disposition: form-data; name="rooms"
+# new 
+# --boundary
+# Content-Disposition: form-data; name="isQualityVerified"
 
-88
---boundary
-Content-Disposition: form-data; name="model"
+# true
+# --boundary
+# Content-Disposition: form-data; name="rooms"
 
-TEST 4
---boundary
-Content-Disposition: form-data; name="description"
+# 88
+# --boundary
+# Content-Disposition: form-data; name="model"
 
-Table
---boundary
-Content-Disposition: form-data; name="dimension"
+# TEST 4
+# --boundary
+# Content-Disposition: form-data; name="description"
 
-{"length": "80", "width": "80"}
---boundary
-Content-Disposition: form-data; name="location"
+# Table
+# --boundary
+# Content-Disposition: form-data; name="dimension"
 
-{"city": "London", "state": "London"}
---boundary
-Content-Disposition: form-data; name="pickUpSlots"
+# {"length": "80", "width": "80"}
+# --boundary
+# Content-Disposition: form-data; name="location"
 
-["2024-06-01T10:00:00Z", "2024-06-02T10:00:00Z"]
---boundary
-Content-Disposition: form-data; name="file"; filename="table.jpg"
-Content-Type: image/png
+# {"city": "London", "state": "London"}
+# --boundary
+# Content-Disposition: form-data; name="pickUpSlots"
 
-< /Users/dimitar/Downloads/test/table.jpg
---boundary--
+# ["2024-06-01T10:00:00Z", "2024-06-02T10:00:00Z"]
+# --boundary
+# Content-Disposition: form-data; name="file"; filename="table.jpg"
+# Content-Type: image/png
+
+# < /Users/dimitar/Downloads/test/table.jpg
+# --boundary--
+
+
+
+# PUT http://localhost:8000/api/product/update/665de59f16f1252680bafabf
+# Content-Type: multipart/form-data; boundary=boundary
+
+# --boundary
+# Content-Disposition: form-data; name="title"
+
+# UpdatedTest29Product
+# --boundary
+# Content-Disposition: form-data; name="price"
+
+# 180.00
+# --boundary
+# Content-Disposition: form-data; name="color"
+
+# NewColor
+# --boundary
+# Content-Disposition: form-data; name="category"
+
+# UPDATED TEST 4
+# --boundary
+# Content-Disposition: form-data; name="condition"
+
+# used
+# --boundary
+# Content-Disposition: form-data; name="isQualityVerified"
+
+# false
+# --boundary
+# Content-Disposition: form-data; name="rooms"
+
+# 4
+# --boundary
+# Content-Disposition: form-data; name="model"
+
+# UPDATED MODEL
+# --boundary
+# Content-Disposition: form-data; name="description"
+
+# Updated Table
+# --boundary
+# Content-Disposition: form-data; name="dimension"
+
+# {"length": "90", "width": "90"}
+# --boundary
+# Content-Disposition: form-data; name="location"
+
+# {"city": "Paris", "state": "Paris"}
+# --boundary
+# Content-Disposition: form-data; name="pickUpSlots"
+
+# ["2024-06-03T10:00:00Z", "2024-06-04T10:00:00Z"]
+# --boundary
+# Content-Disposition: form-data; name="file"; filename="updated_table.jpg"
+# Content-Type: image/png
+
+# < /Users/dimitar/Downloads/test/updated_table.jpg
+# --boundary--
