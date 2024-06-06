@@ -1,0 +1,180 @@
+# POST http://localhost:8000/api/user/register
+# Content-Type: application/json
+
+# {
+#     "username": "dimi",
+#     "email": "dimi@example.com",
+#     "password": "dimi",
+#     "termsConditions": true,
+#     "phone": "123-456-7890",
+#     "address": {
+#         "street": "123 Main St",
+#         "city": "Anytown",
+#         "postalCode": "12345",
+#         "state": "CA"
+#     },
+#     "role": "user"
+# }
+
+# # All Products 
+
+# GET http://localhost:8000/api/product/approveds
+# Content-Type: application/json
+
+
+GET http://localhost:8000/api/product/all
+Content-Type: application/json
+
+# # ### Create Admin User
+# POST http://localhost:8000/api/user/register
+# Content-Type: application/json
+
+# {
+#     "username": "admin",
+#     "email": "admin@example.com",
+#     "password": "adminpassword",
+#     "termsConditions": true,
+#     "phone": "123-456-7890",
+#     "address": {
+#         "street": "123 Main St",
+#         "city": "Anytown",
+#         "postalCode": "12345",
+#         "state": "CA"
+#     },
+#     "role": "admin"
+# }
+
+# # 
+
+
+# GET http://localhost:8000/api/order/approved
+# Content-Type: application/json
+
+
+# GET http://localhost:8000/api/product/approveds
+# Content-Type: application/json
+
+
+
+
+# POST http://localhost:8000/api/product/add
+# Content-Type: multipart/form-data; boundary=boundary
+
+# --boundary
+# Content-Disposition: form-data; name="posterId"
+
+# 60d21b4667d0d8992e610c85
+# --boundary
+# Content-Disposition: form-data; name="title"
+
+# Test36 Product
+# --boundary
+# Content-Disposition: form-data; name="price"
+
+# 160.00
+# --boundary
+# Content-Disposition: form-data; name="color"
+
+# Color
+# --boundary
+# Content-Disposition: form-data; name="category"
+
+# TEST 4
+# --boundary
+# Content-Disposition: form-data; name="condition"
+
+# new 
+# --boundary
+# Content-Disposition: form-data; name="isQualityVerified"
+
+# true
+# --boundary
+# Content-Disposition: form-data; name="rooms"
+
+# 88
+# --boundary
+# Content-Disposition: form-data; name="model"
+
+# TEST 4
+# --boundary
+# Content-Disposition: form-data; name="description"
+
+# Table
+# --boundary
+# Content-Disposition: form-data; name="dimension"
+
+# {"length": "80", "width": "80"}
+# --boundary
+# Content-Disposition: form-data; name="location"
+
+# {"city": "London", "state": "London"}
+# --boundary
+# Content-Disposition: form-data; name="pickUpSlots"
+
+# ["2024-06-01T10:00:00Z", "2024-06-02T10:00:00Z"]
+# --boundary
+# Content-Disposition: form-data; name="file"; filename="table.jpg"
+# Content-Type: image/png
+
+# < /Users/dimitar/Downloads/test/table.jpg
+# --boundary--
+
+
+
+# PUT http://localhost:8000/api/product/update/665de59f16f1252680bafabf
+# Content-Type: multipart/form-data; boundary=boundary
+
+# --boundary
+# Content-Disposition: form-data; name="title"
+
+# UpdatedTest29Product
+# --boundary
+# Content-Disposition: form-data; name="price"
+
+# 180.00
+# --boundary
+# Content-Disposition: form-data; name="color"
+
+# NewColor
+# --boundary
+# Content-Disposition: form-data; name="category"
+
+# UPDATED TEST 4
+# --boundary
+# Content-Disposition: form-data; name="condition"
+
+# used
+# --boundary
+# Content-Disposition: form-data; name="isQualityVerified"
+
+# false
+# --boundary
+# Content-Disposition: form-data; name="rooms"
+
+# 4
+# --boundary
+# Content-Disposition: form-data; name="model"
+
+# UPDATED MODEL
+# --boundary
+# Content-Disposition: form-data; name="description"
+
+# Updated Table
+# --boundary
+# Content-Disposition: form-data; name="dimension"
+
+# {"length": "90", "width": "90"}
+# --boundary
+# Content-Disposition: form-data; name="location"
+
+# {"city": "Paris", "state": "Paris"}
+# --boundary
+# Content-Disposition: form-data; name="pickUpSlots"
+
+# ["2024-06-03T10:00:00Z", "2024-06-04T10:00:00Z"]
+# --boundary
+# Content-Disposition: form-data; name="file"; filename="updated_table.jpg"
+# Content-Type: image/png
+
+# < /Users/dimitar/Downloads/test/updated_table.jpg
+# --boundary--

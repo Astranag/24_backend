@@ -1,9 +1,17 @@
 import Product from "../Models/Product.js";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { sendEmail } from "../Utils/Email.js";
 import User from "../Models/User.js";
 import EmailData from "../Utils/EmailText.json" assert { type: "json" };
 import Order from "../Models/Order.js";
+import { v2 as cloudinary } from "cloudinary";
+import { uploadToCloudinary } from "../Utils/Uploads.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export async function singleupdateOrder(updateOrder) {
   try {
     const updatedProduct = await Order.findByIdAndUpdate(
@@ -29,7 +37,6 @@ const addNewProduct = async (req, res) => {
       color,
       category,
       condition,
-      isQualityVerified,
       rooms,
       model,
       description,
@@ -37,65 +44,119 @@ const addNewProduct = async (req, res) => {
       location,
       pickUpSlots,
     } = req.body;
+
+    console.log("Received new product data:", req.body);
+
     if (!posterId) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
       return res
         .status(400)
         .json({ message: "Please login first or user id not found." });
     }
+
     if (!title || !price || !color || !category) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
       return res
         .status(400)
         .json({ message: "Missing required product details." });
     }
-    const existingProduct = await Product.findOne({
-      title: title,
-      deleted: false,
-    });
+
+    const existingProduct = await Product.findOne({ title, deleted: false });
+
     if (existingProduct) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
       return res.status(409).json({
         success: false,
         message: "Product with the same name already exists.",
       });
     }
-    const imageNames = req?.files?.map((file) => file.filename);
-    if (!imageNames || imageNames.length < 1 || imageNames.length > 5) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
+
+    if (
+      !req.files ||
+      Object.keys(req.files).length < 1 ||
+      Object.keys(req.files).length > 5
+    ) {
       return res
         .status(400)
         .json({ success: false, message: "Please upload 1 to 5 images." });
     }
+
+    console.log("Files to upload:", req.files);
+
+    const filesArray = Array.isArray(req.files.imageNames)
+      ? req.files.imageNames
+      : [req.files.imageNames];
+
+    const uploadPromises = filesArray.map((file) => {
+      return cloudinary.uploader.upload(file.tempFilePath, {
+        folder: "product_images",
+      });
+    });
+
+    const uploadResults = await Promise.all(uploadPromises);
+    const imageUrls = uploadResults.map((result) => result.secure_url);
+
+    let parsedDimension, parsedLocation, parsedPickUpSlots;
+    try {
+      parsedDimension = JSON.parse(dimension);
+    } catch (error) {
+      console.error("Error parsing dimension:", error);
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid JSON format in dimension field.",
+        });
+    }
+
+    try {
+      parsedLocation = JSON.parse(location);
+    } catch (error) {
+      console.error("Error parsing location:", error);
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid JSON format in location field.",
+        });
+    }
+
+    if (pickUpSlots && pickUpSlots !== "undefined") {
+      try {
+        parsedPickUpSlots = JSON.parse(pickUpSlots);
+      } catch (error) {
+        console.error("Error parsing pickUpSlots:", error);
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Invalid JSON format in pickUpSlots field.",
+          });
+      }
+    } else {
+      parsedPickUpSlots = []; // default to an empty array if pickUpSlots is 'undefined' or not provided
+    }
+
     const newProduct = new Product({
       posterId,
       title,
       price,
       color,
-      imageNames,
+      imageNames: imageUrls,
       category,
       condition,
-      isQualityVerified,
       rooms,
       model,
       description,
-      dimension: JSON.parse(dimension),
-      location: JSON.parse(location),
-      pickUpSlots,
+      dimension: parsedDimension,
+      location: parsedLocation,
+      pickUpSlots: parsedPickUpSlots,
     });
+
     await newProduct.save();
+
     const user = await findUserById(newProduct.posterId);
     if (!user) {
       console.log("User who posted that product not found.");
     }
+
     if (process.env.SMTP2GO_API_KEY) {
       console.log("EmailData?.uploadTexts >>>", EmailData?.uploadTexts);
       await sendEmail({
@@ -107,19 +168,18 @@ const addNewProduct = async (req, res) => {
     } else {
       console.warn("SMTP2GO API key not found. Email sending disabled.");
     }
+
     res.status(201).json({
       success: true,
       message: "Product created successfully",
       product: newProduct,
     });
   } catch (error) {
-    if (req.files) {
-      req.files.forEach((file) => fs.unlinkSync(file.path));
-    }
     console.error("Error creating product", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
+
 const getAllProducts = async (req, res) => {
   try {
     const allProducts = await Product.find({ deleted: false });
@@ -130,6 +190,7 @@ const getAllProducts = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
 const getProductsByUserId = async (req, res) => {
   try {
     const { posterId } = req.params;
@@ -152,6 +213,7 @@ const getProductsByUserId = async (req, res) => {
     res.status(500).json({ success: 0, message: "Internal server error." });
   }
 };
+
 const getAllApprovedProducts = async (req, res) => {
   try {
     const approvedProducts = await Product.find({
@@ -171,6 +233,7 @@ const getAllApprovedProducts = async (req, res) => {
     res.status(500).json({ success: 0, message: "Internal server error." });
   }
 };
+
 const getAllPendingProducts = async (req, res) => {
   try {
     const pendingProducts = await Product.find({
@@ -252,7 +315,7 @@ const getSoldProducts = async (req, res) => {
 
 const updateProductStatus = async (req, res) => {
   try {
-    const { id, status } = req.body;
+    const { id, status, imageNames } = req.body;
     if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
       return res
         .status(400)
@@ -272,6 +335,14 @@ const updateProductStatus = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
     product.status = status;
+
+    if (status === "approved" && !imageNames) {
+      imageNames = product.imageNames;
+    }
+
+    if (imageNames) {
+      product.imageNames = imageNames; // This should update the imageNames field
+    }
     const updatedProduct = await updateProduct(product);
 
     const user = await findUserById(updatedProduct.posterId);
@@ -316,46 +387,76 @@ const updateProductStatus = async (req, res) => {
 const updateProductById = async (req, res) => {
   try {
     const { id } = req.params;
+
     if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
       return res
         .status(400)
         .json({ success: 0, message: "Invalid product ID." });
     }
+
     const productData = req.body;
-    const existingImages = req.body?.existingImages || [];
+
     const product = await findProductById(id);
     if (!product) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
       return res
         .status(404)
         .json({ success: 0, message: "Product not found." });
     }
-    if (req.files && req.files.length > 0) {
-      const imageNames = req.files?.map((file) => file.filename);
-      product.imageNames = [...existingImages, ...imageNames];
-    } else {
-      product.imageNames = existingImages;
+
+   
+    let imageUrls = product.imageNames || [];
+
+    if (productData.removeImages) {
+      const imagesToRemove = productData.removeImages.split(",");
+      imageUrls = imageUrls.filter((image) => !imagesToRemove.includes(image));
     }
+
+    // Handle new image uploads
+    if (req.files && Object.keys(req.files).length > 0) {
+      const uploadPromises = Object.values(req.files).map((file) => {
+        return cloudinary.uploader.upload(file.tempFilePath, {
+          folder: "product_images",
+        });
+      });
+
+      const uploadResults = await Promise.all(uploadPromises);
+      const newImageUrls = uploadResults.map((result) => result.secure_url);
+      imageUrls = [...imageUrls, ...newImageUrls];
+    }
+  
+    if (productData.imageOrder) {
+      const newOrder = productData.imageOrder.map(Number);
+      const reorderedImages = [];
+      newOrder.forEach((index) => {
+          reorderedImages.push(imageUrls[index]);
+      });
+      imageUrls = reorderedImages;
+    }
+    productData.imageNames = imageUrls;
+
+
+    // Handle other fields (dimension and location)
     if (productData.dimension) {
       productData.dimension = JSON.parse(productData.dimension);
     }
+
     if (productData.location) {
       productData.location = JSON.parse(productData.location);
     }
+
+    // Update nested fields
     updateNestedFields(product, productData);
 
     const updatedProduct = await updateProduct(product);
     const user = await findUserById(updatedProduct.posterId);
+
     if (!user) {
       console.log("User who posted that product not found.");
     }
+
     if (process.env.SMTP2GO_API_KEY) {
       let fourthTextField;
+
       if (updatedProduct?.status === "approved") {
         if (updatedProduct?.pickUpSlots?.length) {
           function formatDateAndTime(dateTime) {
@@ -368,13 +469,16 @@ const updateProductById = async (req, res) => {
             const time = dateTime.time;
             return `${date}, Time Slot: ${time}`;
           }
+
           fourthTextField = updatedProduct?.pickUpSlots
             ?.map((dateTime) => formatDateAndTime(dateTime))
             ?.join("<br>");
+
           const updatedPendingToApprovedEmailMsg = {
             ...EmailData?.pendingToApproved,
             "4thText": fourthTextField,
           };
+
           await sendEmail({
             updatedProduct,
             user,
@@ -387,6 +491,7 @@ const updateProductById = async (req, res) => {
             ...EmailData?.pendingToApproved,
             "4thText": fourthTextField,
           };
+
           await sendEmail({
             updatedProduct,
             user,
@@ -395,6 +500,7 @@ const updateProductById = async (req, res) => {
           });
         }
       }
+
       if (updatedProduct?.status === "preApproved") {
         await sendEmail({
           updatedProduct,
@@ -403,34 +509,28 @@ const updateProductById = async (req, res) => {
           emailMsg: EmailData?.pendingToPreApproved,
         });
       }
+
       if (updatedProduct?.status === "declined") {
-        if (updatedProduct?.reason) {
-          const updatedPendingToDeclinedEmailMsg = {
-            ...EmailData?.pendingToDeclined,
-            "2ndText": `${updatedProduct?.reason}<br>`,
-          };
-          await sendEmail({
-            updatedProduct,
-            user,
-            emailSubject: "Product Review Status",
-            emailMsg: updatedPendingToDeclinedEmailMsg,
-          });
-        } else {
-          const updatedPendingToDeclinedEmailMsg = {
-            ...EmailData?.pendingToDeclined,
-            "2ndText": `Reason not justified <br>`,
-          };
-          await sendEmail({
-            updatedProduct,
-            user,
-            emailSubject: "Product Review Status",
-            emailMsg: updatedPendingToDeclinedEmailMsg,
-          });
-        }
+        const updatedPendingToDeclinedEmailMsg = {
+          ...EmailData?.pendingToDeclined,
+          "2ndText": `${
+            updatedProduct?.reason
+              ? updatedProduct?.reason
+              : "Reason not justified"
+          }<br>`,
+        };
+
+        await sendEmail({
+          updatedProduct,
+          user,
+          emailSubject: "Product Review Status",
+          emailMsg: updatedPendingToDeclinedEmailMsg,
+        });
       }
     } else {
       console.warn("SMTP2GO API key not found. Email sending disabled.");
     }
+
     res.status(200).json({
       success: 1,
       message: "Product updated successfully.",
@@ -464,6 +564,9 @@ const confirmProductPayment = async (req, res) => {
         .status(404)
         .json({ success: 0, message: "Product not found." });
     }
+
+
+    
     product.status = "deliveryApproved";
     const updatedProduct = await updateProduct(product);
     if (product?.isPreApproved) {
