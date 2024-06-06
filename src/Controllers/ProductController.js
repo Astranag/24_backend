@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { sendEmail } from "../Utils/Email.js";
 import User from "../Models/User.js";
-import EmailData from "../Utils/EmailText.json" assert { type: "json" };
+// import EmailData from "../Utils/EmailText.json" assert { type: "json" };
 import Order from "../Models/Order.js";
 import { v2 as cloudinary } from "cloudinary";
 import { uploadToCloudinary } from "../Utils/Uploads.js";
