@@ -1,69 +1,16 @@
 import Product from "../Models/Product.js";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { sendEmail } from "../Utils/Email.js";
 import User from "../Models/User.js";
 // import EmailData from "../Utils/EmailText.json" assert { type: "json" };
 import Order from "../Models/Order.js";
+import { v2 as cloudinary } from "cloudinary";
+import { uploadToCloudinary } from "../Utils/Uploads.js";
 
-let EmailData= 
-  {
-    "uploadTexts": {
-      "1stText": "Congratulations on successfully uploading your furniture to the 24möbler application! 🎉",
-      "2ndText": "Now, take the next step and continue using the application.",
-      "3rdText": "We'll keep you updated on the status of your furniture based on your availability time slots. It can be approved for announcing the item on our platform, declined, or directly approved for pick up. Most commonly, we offer pick up of the items within 24h.",
-      "4thText": "Keep up the great work!"
-    },
-    "orderText": {
-      "1stText": "Congratulations for your selection of furniture. Kindly proceed with payment using the following details:",
-      "2ndText": "Recipient: Crombo AB",
-      "3rdText": "Payment Methods:",
-      "4thTextUL": "Swish: 1231843754",
-      "5thTextUL": "Bank Giro: 5765-6878",
-      "6thTextUL": "Bank Account: 53851107659 (SEB)",
-      "7thTextUL": "Please include the message \"24mobler app + Swedish personal identification number\" for reference.",
-      "8thText": "Upon successful payment, you will be contacted via email with the receipt and more precise delivery timing, taking into account the time slot preferences you previously specified in the app."
-    },
-    "preApprovedToApproved": {
-      "1stText": "Congratulations! ",
-      "2ndText": "We confirm that your furniture has been successfully sold on our platform 🎉",
-      "3rdText": "This means that we will pick up the furniture within this time slot:",
-      "4thText": "[the text we provide in the admin description box while approving]",
-      "5ththText": "Thank you for choosing 24möbler for selling your furniture!"
-    },
-    "statusSoldTodeliveryApproved": {
-      "1stText": "Congratulations! ",
-      "2ndText": "We confirm that you successfully paid for your Furniture order 🎉",
-      "3rdText": "This means that we will deliver you the furniture within this time slot:",
-      "4thText": "[the text we provide in the admin description box while approving]",
-      "5ththText": "Thank you for choosing 24möbler for buying our furniture!"
-    },
-    "pendingToPreApproved": {
-      "1stText": "Congratulations! ",
-      "2ndText": "Your furniture ad has been approved to be posted on the 24möbler platform! 🎉 ",
-      "3rdText": "This means other users can choose it from our furniture library and after they buy it, we will transfer directly to you.",
-      "4thText": "Thank you for choosing 24möbler for selling your furniture!"
-    },
-    "pendingToApproved": {
-      "1stText": "Congratulations! Your furniture has been selected for direct pick up on the 24möbler platform! 🎉 ",
-      "2ndText": "This means that we are interested to directly take it to our storage and pay you during the pick up.",
-      "3rdText": "Pick up time will be:",
-      "4thText": "[the text we provide in the admin description box while approving]",
-      "5thText": "Thank you for choosing 24möbler for selling your furniture!"
-    },
-    "pendingToDeclined": {
-      "1stText": "Your furniture submission has been carefully reviewed. Unfortunately, we won't be able to proceed with listing it on the 24möbler platform at this time. We appreciate your interest in selling with us. Reason is:",
-      "2ndText": "[the text we provide in the admin description box while declining]",
-      "3rdText": "We encourage you to refine your listing based on the feedback provided and resubmit for consideration. We appreciate your interest in selling with us and look forward to the opportunity to potentially work with you in the future.",
-      "4thText": "Thank you for choosing 24möbler!"
-    },
-    "paymentDeclined": {
-      "1stText": "Payment Not Received: We have not received the payment for your order. Please ensure that your payment is completed to proceed with the order.",
-      "2ndText": "We are unable to deliver your order in the available delivery slots. We apologize for the inconvenience and appreciate your understanding.",
-      "3rdText": "Thank you for choosing 24möbler!"
-    }
-  }
-  
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export async function singleupdateOrder(updateOrder) {
   try {
@@ -90,7 +37,6 @@ const addNewProduct = async (req, res) => {
       color,
       category,
       condition,
-      isQualityVerified,
       rooms,
       model,
       description,
@@ -98,65 +44,119 @@ const addNewProduct = async (req, res) => {
       location,
       pickUpSlots,
     } = req.body;
+
+    console.log("Received new product data:", req.body);
+
     if (!posterId) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
       return res
         .status(400)
         .json({ message: "Please login first or user id not found." });
     }
+
     if (!title || !price || !color || !category) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
       return res
         .status(400)
         .json({ message: "Missing required product details." });
     }
-    const existingProduct = await Product.findOne({
-      title: title,
-      deleted: false,
-    });
+
+    const existingProduct = await Product.findOne({ title, deleted: false });
+
     if (existingProduct) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
       return res.status(409).json({
         success: false,
         message: "Product with the same name already exists.",
       });
     }
-    const imageNames = req?.files?.map((file) => file.filename);
-    if (!imageNames || imageNames.length < 1 || imageNames.length > 5) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
+
+    if (
+      !req.files ||
+      Object.keys(req.files).length < 1 ||
+      Object.keys(req.files).length > 5
+    ) {
       return res
         .status(400)
         .json({ success: false, message: "Please upload 1 to 5 images." });
     }
+
+    console.log("Files to upload:", req.files);
+
+    const filesArray = Array.isArray(req.files.imageNames)
+      ? req.files.imageNames
+      : [req.files.imageNames];
+
+    const uploadPromises = filesArray.map((file) => {
+      return cloudinary.uploader.upload(file.tempFilePath, {
+        folder: "product_images",
+      });
+    });
+
+    const uploadResults = await Promise.all(uploadPromises);
+    const imageUrls = uploadResults.map((result) => result.secure_url);
+
+    let parsedDimension, parsedLocation, parsedPickUpSlots;
+    try {
+      parsedDimension = JSON.parse(dimension);
+    } catch (error) {
+      console.error("Error parsing dimension:", error);
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid JSON format in dimension field.",
+        });
+    }
+
+    try {
+      parsedLocation = JSON.parse(location);
+    } catch (error) {
+      console.error("Error parsing location:", error);
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid JSON format in location field.",
+        });
+    }
+
+    if (pickUpSlots && pickUpSlots !== "undefined") {
+      try {
+        parsedPickUpSlots = JSON.parse(pickUpSlots);
+      } catch (error) {
+        console.error("Error parsing pickUpSlots:", error);
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Invalid JSON format in pickUpSlots field.",
+          });
+      }
+    } else {
+      parsedPickUpSlots = []; // default to an empty array if pickUpSlots is 'undefined' or not provided
+    }
+
     const newProduct = new Product({
       posterId,
       title,
       price,
       color,
-      imageNames,
+      imageNames: imageUrls,
       category,
       condition,
-      isQualityVerified,
       rooms,
       model,
       description,
-      dimension: JSON.parse(dimension),
-      location: JSON.parse(location),
-      pickUpSlots,
+      dimension: parsedDimension,
+      location: parsedLocation,
+      pickUpSlots: parsedPickUpSlots,
     });
+
     await newProduct.save();
+
     const user = await findUserById(newProduct.posterId);
     if (!user) {
       console.log("User who posted that product not found.");
     }
+
     if (process.env.SMTP2GO_API_KEY) {
       console.log("EmailData?.uploadTexts >>>", EmailData?.uploadTexts);
       await sendEmail({
@@ -168,19 +168,18 @@ const addNewProduct = async (req, res) => {
     } else {
       console.warn("SMTP2GO API key not found. Email sending disabled.");
     }
+
     res.status(201).json({
       success: true,
       message: "Product created successfully",
       product: newProduct,
     });
   } catch (error) {
-    if (req.files) {
-      req.files.forEach((file) => fs.unlinkSync(file.path));
-    }
     console.error("Error creating product", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
+
 const getAllProducts = async (req, res) => {
   try {
     const allProducts = await Product.find({ deleted: false });
@@ -191,6 +190,7 @@ const getAllProducts = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
 const getProductsByUserId = async (req, res) => {
   try {
     const { posterId } = req.params;
@@ -213,6 +213,7 @@ const getProductsByUserId = async (req, res) => {
     res.status(500).json({ success: 0, message: "Internal server error." });
   }
 };
+
 const getAllApprovedProducts = async (req, res) => {
   try {
     const approvedProducts = await Product.find({
@@ -232,6 +233,7 @@ const getAllApprovedProducts = async (req, res) => {
     res.status(500).json({ success: 0, message: "Internal server error." });
   }
 };
+
 const getAllPendingProducts = async (req, res) => {
   try {
     const pendingProducts = await Product.find({
@@ -313,7 +315,7 @@ const getSoldProducts = async (req, res) => {
 
 const updateProductStatus = async (req, res) => {
   try {
-    const { id, status } = req.body;
+    const { id, status, imageNames } = req.body;
     if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
       return res
         .status(400)
@@ -333,6 +335,14 @@ const updateProductStatus = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
     product.status = status;
+
+    if (status === "approved" && !imageNames) {
+      imageNames = product.imageNames;
+    }
+
+    if (imageNames) {
+      product.imageNames = imageNames; // This should update the imageNames field
+    }
     const updatedProduct = await updateProduct(product);
 
     const user = await findUserById(updatedProduct.posterId);
@@ -377,46 +387,76 @@ const updateProductStatus = async (req, res) => {
 const updateProductById = async (req, res) => {
   try {
     const { id } = req.params;
+
     if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
       return res
         .status(400)
         .json({ success: 0, message: "Invalid product ID." });
     }
+
     const productData = req.body;
-    const existingImages = req.body?.existingImages || [];
+
     const product = await findProductById(id);
     if (!product) {
-      if (req.files) {
-        req.files.forEach((file) => fs.unlinkSync(file.path));
-      }
       return res
         .status(404)
         .json({ success: 0, message: "Product not found." });
     }
-    if (req.files && req.files.length > 0) {
-      const imageNames = req.files?.map((file) => file.filename);
-      product.imageNames = [...existingImages, ...imageNames];
-    } else {
-      product.imageNames = existingImages;
+
+   
+    let imageUrls = product.imageNames || [];
+
+    if (productData.removeImages) {
+      const imagesToRemove = productData.removeImages.split(",");
+      imageUrls = imageUrls.filter((image) => !imagesToRemove.includes(image));
     }
+
+    // Handle new image uploads
+    if (req.files && Object.keys(req.files).length > 0) {
+      const uploadPromises = Object.values(req.files).map((file) => {
+        return cloudinary.uploader.upload(file.tempFilePath, {
+          folder: "product_images",
+        });
+      });
+
+      const uploadResults = await Promise.all(uploadPromises);
+      const newImageUrls = uploadResults.map((result) => result.secure_url);
+      imageUrls = [...imageUrls, ...newImageUrls];
+    }
+  
+    if (productData.imageOrder) {
+      const newOrder = productData.imageOrder.map(Number);
+      const reorderedImages = [];
+      newOrder.forEach((index) => {
+          reorderedImages.push(imageUrls[index]);
+      });
+      imageUrls = reorderedImages;
+    }
+    productData.imageNames = imageUrls;
+
+
+    // Handle other fields (dimension and location)
     if (productData.dimension) {
       productData.dimension = JSON.parse(productData.dimension);
     }
+
     if (productData.location) {
       productData.location = JSON.parse(productData.location);
     }
+
+    // Update nested fields
     updateNestedFields(product, productData);
 
     const updatedProduct = await updateProduct(product);
     const user = await findUserById(updatedProduct.posterId);
+
     if (!user) {
       console.log("User who posted that product not found.");
     }
+
     if (process.env.SMTP2GO_API_KEY) {
       let fourthTextField;
+
       if (updatedProduct?.status === "approved") {
         if (updatedProduct?.pickUpSlots?.length) {
           function formatDateAndTime(dateTime) {
@@ -429,13 +469,16 @@ const updateProductById = async (req, res) => {
             const time = dateTime.time;
             return `${date}, Time Slot: ${time}`;
           }
+
           fourthTextField = updatedProduct?.pickUpSlots
             ?.map((dateTime) => formatDateAndTime(dateTime))
             ?.join("<br>");
+
           const updatedPendingToApprovedEmailMsg = {
             ...EmailData?.pendingToApproved,
             "4thText": fourthTextField,
           };
+
           await sendEmail({
             updatedProduct,
             user,
@@ -448,6 +491,7 @@ const updateProductById = async (req, res) => {
             ...EmailData?.pendingToApproved,
             "4thText": fourthTextField,
           };
+
           await sendEmail({
             updatedProduct,
             user,
@@ -456,6 +500,7 @@ const updateProductById = async (req, res) => {
           });
         }
       }
+
       if (updatedProduct?.status === "preApproved") {
         await sendEmail({
           updatedProduct,
@@ -464,34 +509,28 @@ const updateProductById = async (req, res) => {
           emailMsg: EmailData?.pendingToPreApproved,
         });
       }
+
       if (updatedProduct?.status === "declined") {
-        if (updatedProduct?.reason) {
-          const updatedPendingToDeclinedEmailMsg = {
-            ...EmailData?.pendingToDeclined,
-            "2ndText": `${updatedProduct?.reason}<br>`,
-          };
-          await sendEmail({
-            updatedProduct,
-            user,
-            emailSubject: "Product Review Status",
-            emailMsg: updatedPendingToDeclinedEmailMsg,
-          });
-        } else {
-          const updatedPendingToDeclinedEmailMsg = {
-            ...EmailData?.pendingToDeclined,
-            "2ndText": `Reason not justified <br>`,
-          };
-          await sendEmail({
-            updatedProduct,
-            user,
-            emailSubject: "Product Review Status",
-            emailMsg: updatedPendingToDeclinedEmailMsg,
-          });
-        }
+        const updatedPendingToDeclinedEmailMsg = {
+          ...EmailData?.pendingToDeclined,
+          "2ndText": `${
+            updatedProduct?.reason
+              ? updatedProduct?.reason
+              : "Reason not justified"
+          }<br>`,
+        };
+
+        await sendEmail({
+          updatedProduct,
+          user,
+          emailSubject: "Product Review Status",
+          emailMsg: updatedPendingToDeclinedEmailMsg,
+        });
       }
     } else {
       console.warn("SMTP2GO API key not found. Email sending disabled.");
     }
+
     res.status(200).json({
       success: 1,
       message: "Product updated successfully.",
@@ -525,6 +564,9 @@ const confirmProductPayment = async (req, res) => {
         .status(404)
         .json({ success: 0, message: "Product not found." });
     }
+
+
+    
     product.status = "deliveryApproved";
     const updatedProduct = await updateProduct(product);
     if (product?.isPreApproved) {

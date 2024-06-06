@@ -1,16 +1,28 @@
-import multer from "multer";
-import path from "path";
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        // Define the destination folder for storing uploaded images
-        cb(null, "./Uploads");
-    },
-    filename: (req, file, cb) => {
-        // Define the filename for the uploaded image
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        const extname = path.extname(file.originalname);
-        cb(null, file.fieldname + "-" + uniqueSuffix + extname);
-    },
+import { v2 as cloudinary } from 'cloudinary';
+import fs from 'fs';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-const upload = multer({ storage });
-export default upload;
+
+const uploadToCloudinary = async (filePath) => {
+  try {
+    console.log(`Verifying file existence: ${filePath}`);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+    console.log(`Attempting to upload file: ${filePath}`);
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder: "product_images",
+    });
+    console.log(`Upload successful: ${result.secure_url}`);
+    return result.secure_url;
+  } catch (error) {
+    console.error(`Upload failed for file ${filePath}: ${error.message}`);
+    throw error;
+  }
+};
+
+export { cloudinary, uploadToCloudinary };
