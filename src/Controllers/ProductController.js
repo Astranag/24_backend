@@ -403,10 +403,9 @@ const updateProductById = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
 
-    // Handle existing images
+   
     let imageUrls = product.imageNames || [];
 
-    // Handle image removal
     if (productData.removeImages) {
       const imagesToRemove = productData.removeImages.split(",");
       imageUrls = imageUrls.filter((image) => !imagesToRemove.includes(image));
@@ -424,8 +423,17 @@ const updateProductById = async (req, res) => {
       const newImageUrls = uploadResults.map((result) => result.secure_url);
       imageUrls = [...imageUrls, ...newImageUrls];
     }
-
+  
+    if (productData.imageOrder) {
+      const newOrder = productData.imageOrder.map(Number);
+      const reorderedImages = [];
+      newOrder.forEach((index) => {
+          reorderedImages.push(imageUrls[index]);
+      });
+      imageUrls = reorderedImages;
+    }
     productData.imageNames = imageUrls;
+
 
     // Handle other fields (dimension and location)
     if (productData.dimension) {
@@ -556,6 +564,9 @@ const confirmProductPayment = async (req, res) => {
         .status(404)
         .json({ success: 0, message: "Product not found." });
     }
+
+
+    
     product.status = "deliveryApproved";
     const updatedProduct = await updateProduct(product);
     if (product?.isPreApproved) {
