@@ -140,6 +140,7 @@ const addNewProduct = async (req, res) => {
       price,
       color,
       imageNames: imageUrls,
+      mainImage: imageUrls[0], // Set MainImage to the first image URL
       category,
       condition,
       rooms,
@@ -150,24 +151,10 @@ const addNewProduct = async (req, res) => {
       pickUpSlots: parsedPickUpSlots,
     });
 
+    // Log the new product object for verification
+    console.log("New product object:", newProduct);
+
     await newProduct.save();
-
-    const user = await findUserById(newProduct.posterId);
-    if (!user) {
-      console.log("User who posted that product not found.");
-    }
-
-    if (process.env.SMTP2GO_API_KEY) {
-      console.log("EmailData?.uploadTexts >>>", EmailData?.uploadTexts);
-      await sendEmail({
-        newProduct,
-        user,
-        emailSubject: "Product Uploaded",
-        emailMsg: EmailData?.uploadTexts,
-      });
-    } else {
-      console.warn("SMTP2GO API key not found. Email sending disabled.");
-    }
 
     res.status(201).json({
       success: true,
@@ -175,10 +162,14 @@ const addNewProduct = async (req, res) => {
       product: newProduct,
     });
   } catch (error) {
-    console.error("Error creating product", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+    console.error("Error creating new product:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
+
 
 const getAllProducts = async (req, res) => {
   try {

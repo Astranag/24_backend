@@ -83,6 +83,10 @@ const productSchema = new Schema(
       type: [String],
       default: null,
     },
+    mainImage: { 
+      type: String,
+      default: null},
+
     starRating: {
       type: Number,
       default: null,
