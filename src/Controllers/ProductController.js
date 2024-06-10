@@ -435,6 +435,9 @@ const updateProductById = async (req, res) => {
     if (productData.location) {
       productData.location = JSON.parse(productData.location);
     }
+    if (productData.addOns) {
+      productData.addOns = JSON.parse(productData.addOns);
+    }
 
     // Update nested fields
     updateNestedFields(product, productData);
