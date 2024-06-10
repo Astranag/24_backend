@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { sendEmail } from "../Utils/Email.js";
 import User from "../Models/User.js";
-// import EmailData from "../Utils/EmailText.json" assert { type: "json" };
+import EmailData from "../Utils/EmailText.json" assert { type: "json" };
 import Order from "../Models/Order.js";
 import { v2 as cloudinary } from "cloudinary";
 import { uploadToCloudinary } from "../Utils/Uploads.js";
@@ -98,24 +98,20 @@ const addNewProduct = async (req, res) => {
       parsedDimension = JSON.parse(dimension);
     } catch (error) {
       console.error("Error parsing dimension:", error);
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Invalid JSON format in dimension field.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON format in dimension field.",
+      });
     }
 
     try {
       parsedLocation = JSON.parse(location);
     } catch (error) {
       console.error("Error parsing location:", error);
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Invalid JSON format in location field.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON format in location field.",
+      });
     }
 
     if (pickUpSlots && pickUpSlots !== "undefined") {
@@ -123,12 +119,10 @@ const addNewProduct = async (req, res) => {
         parsedPickUpSlots = JSON.parse(pickUpSlots);
       } catch (error) {
         console.error("Error parsing pickUpSlots:", error);
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Invalid JSON format in pickUpSlots field.",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Invalid JSON format in pickUpSlots field.",
+        });
       }
     } else {
       parsedPickUpSlots = []; // default to an empty array if pickUpSlots is 'undefined' or not provided
@@ -403,7 +397,6 @@ const updateProductById = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
 
-   
     let imageUrls = product.imageNames || [];
 
     if (productData.removeImages) {
@@ -423,17 +416,16 @@ const updateProductById = async (req, res) => {
       const newImageUrls = uploadResults.map((result) => result.secure_url);
       imageUrls = [...imageUrls, ...newImageUrls];
     }
-  
+
     if (productData.imageOrder) {
       const newOrder = productData.imageOrder.map(Number);
       const reorderedImages = [];
       newOrder.forEach((index) => {
-          reorderedImages.push(imageUrls[index]);
+        reorderedImages.push(imageUrls[index]);
       });
       imageUrls = reorderedImages;
     }
     productData.imageNames = imageUrls;
-
 
     // Handle other fields (dimension and location)
     if (productData.dimension) {
@@ -565,8 +557,6 @@ const confirmProductPayment = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
 
-
-    
     product.status = "deliveryApproved";
     const updatedProduct = await updateProduct(product);
     if (product?.isPreApproved) {
