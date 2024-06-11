@@ -43,6 +43,7 @@ const addNewProduct = async (req, res) => {
       dimension,
       location,
       pickUpSlots,
+      mainImageIndex, 
     } = req.body;
 
     console.log("Received new product data:", req.body);
@@ -134,13 +135,15 @@ const addNewProduct = async (req, res) => {
       parsedPickUpSlots = []; // default to an empty array if pickUpSlots is 'undefined' or not provided
     }
 
+    const mainImageUrl = imageUrls[mainImageIndex] || imageUrls[0]; // Set main image URL based on the index
+
     const newProduct = new Product({
       posterId,
       title,
       price,
       color,
       imageNames: imageUrls,
-      mainImage: imageUrls[0], // Set MainImage to the first image URL
+      mainImage: mainImageUrl, // Use the main image URL
       category,
       condition,
       rooms,
