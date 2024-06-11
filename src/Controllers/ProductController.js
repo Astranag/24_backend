@@ -397,8 +397,8 @@ const updateProductById = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
 
-   
     let imageUrls = product.imageNames || [];
+    let mainImageUrl = product.mainImage;
 
     if (productData.removeImages) {
       const imagesToRemove = productData.removeImages.split(",");
@@ -416,18 +416,33 @@ const updateProductById = async (req, res) => {
       const uploadResults = await Promise.all(uploadPromises);
       const newImageUrls = uploadResults.map((result) => result.secure_url);
       imageUrls = [...imageUrls, ...newImageUrls];
+
+      // If mainImage is uploaded, update mainImageUrl
+      if (req.files.mainImage) {
+        const mainImageResult = uploadResults.find(result => result.original_filename === req.files.mainImage.originalname);
+        if (mainImageResult) {
+          mainImageUrl = mainImageResult.secure_url;
+        }
+      }
     }
-  
+
     if (productData.imageOrder) {
       const newOrder = productData.imageOrder.map(Number);
       const reorderedImages = [];
       newOrder.forEach((index) => {
-          reorderedImages.push(imageUrls[index]);
+        reorderedImages.push(imageUrls[index]);
       });
       imageUrls = reorderedImages;
     }
     productData.imageNames = imageUrls;
 
+    // Handle the main image if it's provided as a URL reference
+    if (productData.mainImage && !req.files.mainImage) {
+      mainImageUrl = productData.mainImage;
+    }
+
+    // Set the main image URL in product data
+    productData.mainImage = mainImageUrl;
 
     // Handle other fields (dimension and location)
     if (productData.dimension) {
