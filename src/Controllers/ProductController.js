@@ -43,21 +43,17 @@ const addNewProduct = async (req, res) => {
       dimension,
       location,
       pickUpSlots,
-      mainImageIndex, 
+      mainImageIndex,
     } = req.body;
 
     console.log("Received new product data:", req.body);
 
     if (!posterId) {
-      return res
-        .status(400)
-        .json({ message: "Please login first or user id not found." });
+      return res.status(400).json({ message: "Please login first or user id not found." });
     }
 
     if (!title || !price || !color || !category) {
-      return res
-        .status(400)
-        .json({ message: "Missing required product details." });
+      return res.status(400).json({ message: "Missing required product details." });
     }
 
     const existingProduct = await Product.findOne({ title, deleted: false });
@@ -69,14 +65,8 @@ const addNewProduct = async (req, res) => {
       });
     }
 
-    if (
-      !req.files ||
-      Object.keys(req.files).length < 1 ||
-      Object.keys(req.files).length > 5
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Please upload 1 to 5 images." });
+    if (!req.files || Object.keys(req.files).length < 1 || Object.keys(req.files).length > 5) {
+      return res.status(400).json({ success: false, message: "Please upload 1 to 5 images." });
     }
 
     console.log("Files to upload:", req.files);
@@ -99,24 +89,20 @@ const addNewProduct = async (req, res) => {
       parsedDimension = JSON.parse(dimension);
     } catch (error) {
       console.error("Error parsing dimension:", error);
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Invalid JSON format in dimension field.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON format in dimension field.",
+      });
     }
 
     try {
       parsedLocation = JSON.parse(location);
     } catch (error) {
       console.error("Error parsing location:", error);
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Invalid JSON format in location field.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON format in location field.",
+      });
     }
 
     if (pickUpSlots && pickUpSlots !== "undefined") {
@@ -124,12 +110,10 @@ const addNewProduct = async (req, res) => {
         parsedPickUpSlots = JSON.parse(pickUpSlots);
       } catch (error) {
         console.error("Error parsing pickUpSlots:", error);
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Invalid JSON format in pickUpSlots field.",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Invalid JSON format in pickUpSlots field.",
+        });
       }
     } else {
       parsedPickUpSlots = []; // default to an empty array if pickUpSlots is 'undefined' or not provided
@@ -172,6 +156,7 @@ const addNewProduct = async (req, res) => {
     });
   }
 };
+
 
 
 const getAllProducts = async (req, res) => {
@@ -397,6 +382,7 @@ const updateProductById = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
 
+   
     let imageUrls = product.imageNames || [];
     let mainImageUrl = product.mainImage;
 
@@ -416,16 +402,8 @@ const updateProductById = async (req, res) => {
       const uploadResults = await Promise.all(uploadPromises);
       const newImageUrls = uploadResults.map((result) => result.secure_url);
       imageUrls = [...imageUrls, ...newImageUrls];
-
-      // If mainImage is uploaded, update mainImageUrl
-      if (req.files.mainImage) {
-        const mainImageResult = uploadResults.find(result => result.original_filename === req.files.mainImage.originalname);
-        if (mainImageResult) {
-          mainImageUrl = mainImageResult.secure_url;
-        }
-      }
     }
-
+  
     if (productData.imageOrder) {
       const newOrder = productData.imageOrder.map(Number);
       const reorderedImages = [];
@@ -434,14 +412,14 @@ const updateProductById = async (req, res) => {
       });
       imageUrls = reorderedImages;
     }
+
     productData.imageNames = imageUrls;
 
-    // Handle the main image if it's provided as a URL reference
-    if (productData.mainImage && !req.files.mainImage) {
-      mainImageUrl = productData.mainImage;
+    console.log("Received mainImageIndex:", productData.mainImageIndex); // Log the received mainImageIndex
+    if (typeof productData.mainImageIndex !== 'undefined') {
+      mainImageUrl = imageUrls[productData.mainImageIndex];
     }
 
-    // Set the main image URL in product data
     productData.mainImage = mainImageUrl;
 
     // Handle other fields (dimension and location)
@@ -457,8 +435,12 @@ const updateProductById = async (req, res) => {
     updateNestedFields(product, productData);
 
     const updatedProduct = await updateProduct(product);
-    const user = await findUserById(updatedProduct.posterId);
 
+    if (updatedProduct?.success) { 
+      console.log("Main image URL after update:", updatedProduct.mainImage);
+    } 
+    
+    const user = await findUserById(updatedProduct.posterId);
     if (!user) {
       console.log("User who posted that product not found.");
     }
