@@ -93,12 +93,20 @@ const addNewProduct = async (req, res) => {
         success: false,
         message: "Invalid JSON format in dimension field.",
       });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON format in dimension field.",
+      });
     }
 
     try {
       parsedLocation = JSON.parse(location);
     } catch (error) {
       console.error("Error parsing location:", error);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON format in location field.",
+      });
       return res.status(400).json({
         success: false,
         message: "Invalid JSON format in location field.",
@@ -110,6 +118,10 @@ const addNewProduct = async (req, res) => {
         parsedPickUpSlots = JSON.parse(pickUpSlots);
       } catch (error) {
         console.error("Error parsing pickUpSlots:", error);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid JSON format in pickUpSlots field.",
+        });
         return res.status(400).json({
           success: false,
           message: "Invalid JSON format in pickUpSlots field.",
@@ -382,7 +394,6 @@ const updateProductById = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
 
-   
     let imageUrls = product.imageNames || [];
     let mainImageUrl = product.mainImage;
 
@@ -403,11 +414,12 @@ const updateProductById = async (req, res) => {
       const newImageUrls = uploadResults.map((result) => result.secure_url);
       imageUrls = [...imageUrls, ...newImageUrls];
     }
-  
+
     if (productData.imageOrder) {
       const newOrder = productData.imageOrder.map(Number);
       const reorderedImages = [];
       newOrder.forEach((index) => {
+        reorderedImages.push(imageUrls[index]);
         reorderedImages.push(imageUrls[index]);
       });
       imageUrls = reorderedImages;
@@ -429,6 +441,9 @@ const updateProductById = async (req, res) => {
 
     if (productData.location) {
       productData.location = JSON.parse(productData.location);
+    }
+    if (productData.addOns) {
+      productData.addOns = JSON.parse(productData.addOns);
     }
 
     // Update nested fields
@@ -556,8 +571,6 @@ const confirmProductPayment = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
 
-
-    
     product.status = "deliveryApproved";
     const updatedProduct = await updateProduct(product);
     if (product?.isPreApproved) {
