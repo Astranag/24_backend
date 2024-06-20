@@ -43,20 +43,17 @@ const addNewProduct = async (req, res) => {
       dimension,
       location,
       pickUpSlots,
+      mainImageIndex,
     } = req.body;
 
     console.log("Received new product data:", req.body);
 
     if (!posterId) {
-      return res
-        .status(400)
-        .json({ message: "Please login first or user id not found." });
+      return res.status(400).json({ message: "Please login first or user id not found." });
     }
 
     if (!title || !price || !color || !category) {
-      return res
-        .status(400)
-        .json({ message: "Missing required product details." });
+      return res.status(400).json({ message: "Missing required product details." });
     }
 
     const existingProduct = await Product.findOne({ title, deleted: false });
@@ -68,14 +65,8 @@ const addNewProduct = async (req, res) => {
       });
     }
 
-    if (
-      !req.files ||
-      Object.keys(req.files).length < 1 ||
-      Object.keys(req.files).length > 5
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Please upload 1 to 5 images." });
+    if (!req.files || Object.keys(req.files).length < 1 || Object.keys(req.files).length > 5) {
+      return res.status(400).json({ success: false, message: "Please upload 1 to 5 images." });
     }
 
     console.log("Files to upload:", req.files);
@@ -102,12 +93,20 @@ const addNewProduct = async (req, res) => {
         success: false,
         message: "Invalid JSON format in dimension field.",
       });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON format in dimension field.",
+      });
     }
 
     try {
       parsedLocation = JSON.parse(location);
     } catch (error) {
       console.error("Error parsing location:", error);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid JSON format in location field.",
+      });
       return res.status(400).json({
         success: false,
         message: "Invalid JSON format in location field.",
@@ -123,10 +122,16 @@ const addNewProduct = async (req, res) => {
           success: false,
           message: "Invalid JSON format in pickUpSlots field.",
         });
+        return res.status(400).json({
+          success: false,
+          message: "Invalid JSON format in pickUpSlots field.",
+        });
       }
     } else {
       parsedPickUpSlots = []; // default to an empty array if pickUpSlots is 'undefined' or not provided
     }
+
+    const mainImageUrl = imageUrls[mainImageIndex] || imageUrls[0]; // Set main image URL based on the index
 
     const newProduct = new Product({
       posterId,
@@ -134,6 +139,7 @@ const addNewProduct = async (req, res) => {
       price,
       color,
       imageNames: imageUrls,
+      mainImage: mainImageUrl, // Use the main image URL
       category,
       condition,
       rooms,
@@ -144,24 +150,10 @@ const addNewProduct = async (req, res) => {
       pickUpSlots: parsedPickUpSlots,
     });
 
+    // Log the new product object for verification
+    console.log("New product object:", newProduct);
+
     await newProduct.save();
-
-    const user = await findUserById(newProduct.posterId);
-    if (!user) {
-      console.log("User who posted that product not found.");
-    }
-
-    if (process.env.SMTP2GO_API_KEY) {
-      console.log("EmailData?.uploadTexts >>>", EmailData?.uploadTexts);
-      await sendEmail({
-        newProduct,
-        user,
-        emailSubject: "Product Uploaded",
-        emailMsg: EmailData?.uploadTexts,
-      });
-    } else {
-      console.warn("SMTP2GO API key not found. Email sending disabled.");
-    }
 
     res.status(201).json({
       success: true,
@@ -169,10 +161,15 @@ const addNewProduct = async (req, res) => {
       product: newProduct,
     });
   } catch (error) {
-    console.error("Error creating product", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+    console.error("Error creating new product:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
+
+
 
 const getAllProducts = async (req, res) => {
   try {
@@ -398,6 +395,7 @@ const updateProductById = async (req, res) => {
     }
 
     let imageUrls = product.imageNames || [];
+    let mainImageUrl = product.mainImage;
 
     if (productData.removeImages) {
       const imagesToRemove = productData.removeImages.split(",");
@@ -422,10 +420,19 @@ const updateProductById = async (req, res) => {
       const reorderedImages = [];
       newOrder.forEach((index) => {
         reorderedImages.push(imageUrls[index]);
+        reorderedImages.push(imageUrls[index]);
       });
       imageUrls = reorderedImages;
     }
+
     productData.imageNames = imageUrls;
+
+    console.log("Received mainImageIndex:", productData.mainImageIndex); // Log the received mainImageIndex
+    if (typeof productData.mainImageIndex !== 'undefined') {
+      mainImageUrl = imageUrls[productData.mainImageIndex];
+    }
+
+    productData.mainImage = mainImageUrl;
 
     // Handle other fields (dimension and location)
     if (productData.dimension) {
@@ -443,8 +450,12 @@ const updateProductById = async (req, res) => {
     updateNestedFields(product, productData);
 
     const updatedProduct = await updateProduct(product);
-    const user = await findUserById(updatedProduct.posterId);
 
+    if (updatedProduct?.success) { 
+      console.log("Main image URL after update:", updatedProduct.mainImage);
+    } 
+    
+    const user = await findUserById(updatedProduct.posterId);
     if (!user) {
       console.log("User who posted that product not found.");
     }
