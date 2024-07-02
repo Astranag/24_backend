@@ -7,7 +7,8 @@ import {
   updateFlatRateCode,
   updatePercentageCode,
   deleteFlatRateCode,
-  deletePercentageCode
+  deletePercentageCode,
+  checkDiscountCode
 } from '../Controllers/DiscountCodesController.js';
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.put('/flatRateCodes/:id', updateFlatRateCode);
 router.put('/percentageCodes/:id', updatePercentageCode);
 router.delete('/flatRateCodes/:id', deleteFlatRateCode);
 router.delete('/percentageCodes/:id', deletePercentageCode);
+router.get('/checkCode/:code', checkDiscountCode);
 
 export default router;
 

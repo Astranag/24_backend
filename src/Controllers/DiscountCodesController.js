@@ -84,3 +84,22 @@ export const deleteFlatRateCode = async (req, res) => {
       res.status(500).json({ success: false, message: 'Failed to delete percentage code' });
     }
   };
+
+  export const checkDiscountCode = async (req, res) => {
+    const { code } = req.params;
+    try {
+      let discountCode = await FlatRateCodes.findOne({ code });
+      if (discountCode) {
+        return res.json({ success: true, discountCode: { discountType: 'flatRate', discountValue: discountCode.value } });
+      }
+  
+      discountCode = await PercentageCodes.findOne({ code });
+      if (discountCode) {
+        return res.json({ success: true, discountCode: { discountType: 'percentage', discountValue: discountCode.value } });
+      }
+  
+      res.status(404).json({ success: false, message: 'Discount code not found' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Server Error', error });
+    }
+  };
