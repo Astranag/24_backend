@@ -402,8 +402,8 @@ const updateProductById = async (req, res) => {
     }
 
     // Handle new image uploads
-    if (req.files && Object.keys(req.files).length > 0) {
-      const uploadPromises = Object.values(req.files).map((file) => {
+    if (req.files && req.files.imageNames && req.files.imageNames.length > 0) {
+      const uploadPromises = req.files.imageNames.map((file) => {
         console.log("Uploading file:", file);
         return cloudinary.uploader.upload(file.tempFilePath, {
           folder: "product_images",
@@ -544,10 +544,10 @@ const updateProductById = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating product:", error);
-    if (req.files && Array.isArray(req.files)) {
-      req.files.forEach((file) => {
-        console.log("Deleting file due to error:", file.path);
-        fs.unlinkSync(file.path);
+    if (req.files && req.files.imageNames && req.files.imageNames.length > 0) {
+      req.files.imageNames.forEach((file) => {
+        console.log("Deleting file due to error:", file.tempFilePath);
+        fs.unlinkSync(file.tempFilePath);
       });
     }
     res.status(500).json({ success: 0, message: "Internal server error." });
