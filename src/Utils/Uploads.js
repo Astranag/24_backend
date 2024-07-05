@@ -16,6 +16,8 @@ const uploadToCloudinary = async (filePath) => {
     console.log(`Attempting to upload file: ${filePath}`);
     const result = await cloudinary.uploader.upload(filePath, {
       folder: "product_images",
+      transformation: [
+        { width: 300, height: 200, crop: "limit" }]
     });
     console.log(`Upload successful: ${result.secure_url}`);
     return result.secure_url;
