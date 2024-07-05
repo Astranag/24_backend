@@ -207,23 +207,36 @@ const getProductsByUserId = async (req, res) => {
 
 const getAllApprovedProducts = async (req, res) => {
   try {
+    const { searchQuery } = req.query; // Get the search query from the request query parameter
+    const searchRegex = new RegExp(searchQuery, 'i'); // Create a case-insensitive regex pattern
+
     const approvedProducts = await Product.find({
-      status: { $in: ["approved", "preApproved", "deliveryNotApproved"] },
+      status: { $in: ['approved', 'preApproved', 'deliveryNotApproved'] },
       deleted: false,
+      $or: [
+        { title: searchRegex }, // Search in product title
+        { description: searchRegex }, // Search in product description
+        { addOns: { $elemMatch: { name: searchRegex } } }, // Search in add-on names
+        { category: searchRegex }, // Search in product category
+        { rooms: searchRegex }, // Search in product rooms
+      ],
     }).sort({ createdAt: -1 });
-    if (approvedProducts?.length) {
+
+    if (approvedProducts.length) {
       res.status(200).json({
         success: 1,
-        message: "All Approved Products",
+        message: 'Approved Products',
         approvedProducts,
       });
     } else {
-      res.status(200).json({ success: 0, message: "No data Found" });
+      res.status(200).json({ success: 0, message: 'No data Found' });
     }
   } catch (error) {
-    res.status(500).json({ success: 0, message: "Internal server error." });
+    res.status(500).json({ success: 0, message: 'Internal server error.' });
   }
 };
+
+
 
 const getAllPendingProducts = async (req, res) => {
   try {
