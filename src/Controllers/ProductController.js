@@ -380,18 +380,17 @@ const updateProductById = async (req, res) => {
     const { id } = req.params;
 
     if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
-      return res
-        .status(400)
-        .json({ success: 0, message: "Invalid product ID." });
+      return res.status(400).json({ success: 0, message: "Invalid product ID." });
     }
 
     const productData = req.body;
 
+    console.log("Received product data:", productData);
+    console.log("Received files:", req.files);
+
     const product = await findProductById(id);
     if (!product) {
-      return res
-        .status(404)
-        .json({ success: 0, message: "Product not found." });
+      return res.status(404).json({ success: 0, message: "Product not found." });
     }
 
     let imageUrls = product.imageNames || [];
@@ -400,11 +399,20 @@ const updateProductById = async (req, res) => {
     if (productData.removeImages) {
       const imagesToRemove = productData.removeImages.split(",");
       imageUrls = imageUrls.filter((image) => !imagesToRemove.includes(image));
+
+      // Optionally, delete the removed images from Cloudinary
+      const deletePromises = imagesToRemove.map((image) => {
+        // Assuming image URLs are stored with Cloudinary IDs
+        const imageId = image.split('/').pop().split('.')[0];
+        return cloudinary.uploader.destroy(imageId);
+      });
+      await Promise.all(deletePromises);
     }
 
     // Handle new image uploads
-    if (req.files && Object.keys(req.files).length > 0) {
-      const uploadPromises = Object.values(req.files).map((file) => {
+    if (req.files && req.files.imageNames && req.files.imageNames.length > 0) {
+      const uploadPromises = req.files.imageNames.map((file) => {
+        console.log("Uploading file:", file);
         return cloudinary.uploader.upload(file.tempFilePath, {
           folder: "product_images",
         });
@@ -420,14 +428,13 @@ const updateProductById = async (req, res) => {
       const reorderedImages = [];
       newOrder.forEach((index) => {
         reorderedImages.push(imageUrls[index]);
-        reorderedImages.push(imageUrls[index]);
       });
       imageUrls = reorderedImages;
     }
 
     productData.imageNames = imageUrls;
 
-    console.log("Received mainImageIndex:", productData.mainImageIndex); // Log the received mainImageIndex
+    console.log("Received mainImageIndex:", productData.mainImageIndex);
     if (typeof productData.mainImageIndex !== 'undefined') {
       mainImageUrl = imageUrls[productData.mainImageIndex];
     }
@@ -537,19 +544,24 @@ const updateProductById = async (req, res) => {
       console.warn("SMTP2GO API key not found. Email sending disabled.");
     }
 
+    console.log("Updated product:", updatedProduct);
     res.status(200).json({
       success: 1,
       message: "Product updated successfully.",
       product: updatedProduct,
     });
   } catch (error) {
-    console.error(error);
-    if (req.files) {
-      req.files.forEach((file) => fs.unlinkSync(file.path));
+    console.error("Error updating product:", error);
+    if (req.files && req.files.imageNames && req.files.imageNames.length > 0) {
+      req.files.imageNames.forEach((file) => {
+        console.log("Deleting file due to error:", file.tempFilePath);
+        fs.unlinkSync(file.tempFilePath);
+      });
     }
     res.status(500).json({ success: 0, message: "Internal server error." });
   }
 };
+
 
 const confirmProductPayment = async (req, res) => {
   try {
