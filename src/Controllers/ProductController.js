@@ -236,7 +236,28 @@ const getAllApprovedProducts = async (req, res) => {
   }
 };
 
+const getProductsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params; // Get the category from the request parameter
+    const products = await Product.find({
+      category,
+      status: { $in: ['approved', 'preApproved', 'deliveryNotApproved'] },
+      deleted: false,
+    }).sort({ createdAt: -1 });
 
+    if (products.length) {
+      res.status(200).json({
+        success: 1,
+        message: `Products in ${category} category`,
+        products,
+      });
+    } else {
+      res.status(200).json({ success: 0, message: 'No data Found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: 0, message: 'Internal server error.' });
+  }
+};
 
 const getAllPendingProducts = async (req, res) => {
   try {
@@ -816,6 +837,7 @@ export {
   getAllApprovedProducts,
   getAllPendingProducts,
   getProductsHistory,
+  getProductsByCategory, 
   updateProductById,
   updateProductStatus,
   getSoldProducts,
