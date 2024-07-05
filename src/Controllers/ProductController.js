@@ -399,6 +399,14 @@ const updateProductById = async (req, res) => {
     if (productData.removeImages) {
       const imagesToRemove = productData.removeImages.split(",");
       imageUrls = imageUrls.filter((image) => !imagesToRemove.includes(image));
+
+      // Optionally, delete the removed images from Cloudinary
+      const deletePromises = imagesToRemove.map((image) => {
+        // Assuming image URLs are stored with Cloudinary IDs
+        const imageId = image.split('/').pop().split('.')[0];
+        return cloudinary.uploader.destroy(imageId);
+      });
+      await Promise.all(deletePromises);
     }
 
     // Handle new image uploads

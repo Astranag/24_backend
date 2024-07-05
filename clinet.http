@@ -25,8 +25,8 @@
 
 
 
-GET http://localhost:8000/api/product/all
-Content-Type: application/json
+# GET http://localhost:8000/api/product/all
+# Content-Type: application/json
 
 # # ### Create Admin User
 # POST http://localhost:8000/api/user/register
@@ -60,67 +60,68 @@ Content-Type: application/json
 
 
 
-# POST http://localhost:8000/api/product/add
-# Content-Type: multipart/form-data; boundary=boundary
+POST http://localhost:8000/api/product/add
+Content-Type: multipart/form-data; boundary=boundary
 
-# --boundary
-# Content-Disposition: form-data; name="posterId"
+--boundary
+Content-Disposition: form-data; name="posterId"
 
-# 60d21b4667d0d8992e610c85
-# --boundary
-# Content-Disposition: form-data; name="title"
+60d21b4667d0d8992e610c85
+--boundary
+Content-Disposition: form-data; name="title"
 
-# Test36 Product
-# --boundary
-# Content-Disposition: form-data; name="price"
+Test36 Product
+--boundary
+Content-Disposition: form-data; name="price"
 
-# 160.00
-# --boundary
-# Content-Disposition: form-data; name="color"
+160.00
+--boundary
+Content-Disposition: form-data; name="color"
 
-# Color
-# --boundary
-# Content-Disposition: form-data; name="category"
+Color
+--boundary
+Content-Disposition: form-data; name="category"
 
-# TEST 4
-# --boundary
-# Content-Disposition: form-data; name="condition"
+TEST 4
+--boundary
+Content-Disposition: form-data; name="condition"
 
-# new 
-# --boundary
-# Content-Disposition: form-data; name="isQualityVerified"
+new 
+--boundary
+Content-Disposition: form-data; name="isQualityVerified"
 
-# true
-# --boundary
-# Content-Disposition: form-data; name="rooms"
+true
+--boundary
+Content-Disposition: form-data; name="rooms"
 
-# 88
-# --boundary
-# Content-Disposition: form-data; name="model"
+88
+--boundary
+Content-Disposition: form-data; name="model"
 
-# TEST 4
-# --boundary
-# Content-Disposition: form-data; name="description"
+TEST 4
+--boundary
+Content-Disposition: form-data; name="description"
 
-# Table
-# --boundary
-# Content-Disposition: form-data; name="dimension"
+Table
+--boundary
+Content-Disposition: form-data; name="dimension"
 
-# {"length": "80", "width": "80"}
-# --boundary
-# Content-Disposition: form-data; name="location"
+{"length": "80", "width": "80"}
+--boundary
+Content-Disposition: form-data; name="location"
 
-# {"city": "London", "state": "London"}
-# --boundary
-# Content-Disposition: form-data; name="pickUpSlots"
+{"city": "London", "state": "London"}
+--boundary
+Content-Disposition: form-data; name="pickUpSlots"
 
-# ["2024-06-01T10:00:00Z", "2024-06-02T10:00:00Z"]
-# --boundary
-# Content-Disposition: form-data; name="file"; filename="table.jpg"
-# Content-Type: image/png
+["2024-06-03T10:00:00Z", "2024-06-04T10:00:00Z"]
+--boundary
+Content-Disposition: form-data; name="file"; filename="table.jpg"
+Content-Type: image/jpeg
 
-# < /Users/dimitar/Downloads/test/table.jpg
-# --boundary--
+< /Users/dimitar/Downloads/test/table.jpg
+--boundary--
+
 
 
 
