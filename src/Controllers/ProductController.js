@@ -808,6 +808,29 @@ const getProductsBySubadminEmail = async (req, res) => {
   }
 };
 
+const getProductsBySubadminAndStatus = async (req, res) => {
+  try {
+    const subadminEmail = req.query.subadminEmail;
+    const products = await Product.find({
+      subadminEmail: subadminEmail,
+      status: { $ne: "pending" },
+      deleted: false,
+    }).sort({ createdAt: -1 });
+
+    if (products.length) {
+      res.status(200).json({
+        success: 1,
+        message: "Products filtered by subadmin email and status",
+        products,
+      });
+    } else {
+      res.status(200).json({ success: 0, message: "No data found" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: 0, message: "Internal server error" });
+  }
+};
+
 export {
   addNewProduct,
   getAllProducts,
@@ -822,4 +845,5 @@ export {
   declineProductPayment,
   deleteProductsHistory,
   getProductsBySubadminEmail,
+  getProductsBySubadminAndStatus,
 };

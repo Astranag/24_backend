@@ -13,7 +13,8 @@ import {
   confirmProductPayment,
   declineProductPayment,
   deleteProductsHistory,
-  getProductsBySubadminEmail
+  getProductsBySubadminEmail,
+  getProductsBySubadminAndStatus
 } from "../Controllers/ProductController.js";
 
 const router = express.Router();
@@ -31,6 +32,7 @@ router.put("/status", updateProductStatus);
 router.put("/confirm/payment", confirmProductPayment);
 router.put("/decline/payment", declineProductPayment);
 router.get("/by-subadmin", getProductsBySubadminEmail);
+router.get("/by-subadmin-status", getProductsBySubadminAndStatus);
 
 
 export default router;
