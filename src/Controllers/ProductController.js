@@ -44,6 +44,7 @@ const addNewProduct = async (req, res) => {
       location,
       pickUpSlots,
       mainImageIndex,
+      subadminEmail
     } = req.body;
 
     console.log("Received new product data:", req.body);
@@ -93,20 +94,12 @@ const addNewProduct = async (req, res) => {
         success: false,
         message: "Invalid JSON format in dimension field.",
       });
-      return res.status(400).json({
-        success: false,
-        message: "Invalid JSON format in dimension field.",
-      });
     }
 
     try {
       parsedLocation = JSON.parse(location);
     } catch (error) {
       console.error("Error parsing location:", error);
-      return res.status(400).json({
-        success: false,
-        message: "Invalid JSON format in location field.",
-      });
       return res.status(400).json({
         success: false,
         message: "Invalid JSON format in location field.",
@@ -118,10 +111,6 @@ const addNewProduct = async (req, res) => {
         parsedPickUpSlots = JSON.parse(pickUpSlots);
       } catch (error) {
         console.error("Error parsing pickUpSlots:", error);
-        return res.status(400).json({
-          success: false,
-          message: "Invalid JSON format in pickUpSlots field.",
-        });
         return res.status(400).json({
           success: false,
           message: "Invalid JSON format in pickUpSlots field.",
@@ -148,6 +137,7 @@ const addNewProduct = async (req, res) => {
       dimension: parsedDimension,
       location: parsedLocation,
       pickUpSlots: parsedPickUpSlots,
+      subadminEmail // Include subadminEmail in the new product object
     });
 
     // Log the new product object for verification
@@ -808,6 +798,16 @@ function updateNestedFields(target, source) {
   }
 }
 
+const getProductsBySubadminEmail = async (req, res) => {
+  try {
+    const subadminEmail = req.query.subadminEmail;
+    const products = await Product.find({ subadminEmail: subadminEmail });
+    res.json({ success: true, products: products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export {
   addNewProduct,
   getAllProducts,
@@ -821,4 +821,5 @@ export {
   confirmProductPayment,
   declineProductPayment,
   deleteProductsHistory,
+  getProductsBySubadminEmail,
 };

@@ -149,6 +149,10 @@ const productSchema = new Schema(
       type: Array,
     },
     deleted: { type: Boolean, default: false },
+    subadminEmail: {
+      type: String,
+      required: true,
+    },
   },
   { timestamps: true }
 );

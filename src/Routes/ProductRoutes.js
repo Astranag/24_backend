@@ -13,9 +13,8 @@ import {
   confirmProductPayment,
   declineProductPayment,
   deleteProductsHistory,
+  getProductsBySubadminEmail
 } from "../Controllers/ProductController.js";
-import { IsAuthUser } from "../Utils/IsAuthUser.js";
-
 
 const router = express.Router();
 
@@ -31,6 +30,7 @@ router.put("/update/:id", updateProductById);
 router.put("/status", updateProductStatus);
 router.put("/confirm/payment", confirmProductPayment);
 router.put("/decline/payment", declineProductPayment);
+router.get("/by-subadmin", getProductsBySubadminEmail);
 
 
 export default router;

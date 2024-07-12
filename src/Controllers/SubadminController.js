@@ -115,4 +115,20 @@ const checkSubadmin = async (req, res) => {
     res.json({ success: true, subadmin: subadminWithoutPassword });
 };
 
-export { registerSubadmin, loginSubadmin, logoutSubadmin, updateSubadmin, checkSubadmin };
+const getSubadminDetails = async (req, res) => {
+    try {
+        const { posterId } = req.params;
+        const subadmin = await Subadmin.findById(posterId);
+
+        if (!subadmin) {
+            return res.status(404).json({ success: false, message: "Subadmin not found" });
+        }
+
+        res.status(200).json({ success: true, data: subadmin });
+    } catch (error) {
+        console.error("Error fetching subadmin details:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+export { registerSubadmin, loginSubadmin, logoutSubadmin, updateSubadmin, checkSubadmin, getSubadminDetails };
