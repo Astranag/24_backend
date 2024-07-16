@@ -163,7 +163,7 @@ const addNewProduct = async (req, res) => {
 
 const getAllProducts = async (req, res) => {
   try {
-    const allProducts = await Product.find({ deleted: false });
+    const allProducts = await Product.find({});
     if (allProducts) {
       res.status(200).json({ message: "All Products", allProducts });
     }
@@ -236,13 +236,10 @@ const getAllPendingProducts = async (req, res) => {
 const getProductsHistory = async (req, res) => {
   try {
     const historyProducts = await Product.find({
-      status: { $in: ["approved", "preApproved", "declined"] },
       deleted: false,
     }).sort({ createdAt: -1 });
     if (historyProducts?.length) {
-      res
-        .status(200)
-        .json({ success: 1, message: "All Products History", historyProducts });
+      res.status(200).json({ success: 1, message: "All Products History", historyProducts });
     } else {
       res.status(200).json({ success: 0, message: "No data Found" });
     }
@@ -573,7 +570,6 @@ const confirmProductPayment = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
 
-    product.status = "deliveryApproved";
     const updatedProduct = await updateProduct(product);
     if (product?.isPreApproved) {
       const productOwner = await findUserById(product.posterId);
