@@ -18,7 +18,7 @@ export const orderSchema = new Schema(
     },
     orderStatus: {
       type: String,
-      enum: ["pending", "confirmed", "shipped", "decline"],
+      enum: ["pending", "confirmed", "shipped", "decline", "cancelled"],
       default: "pending",
     },
   },

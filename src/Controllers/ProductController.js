@@ -236,10 +236,13 @@ const getAllPendingProducts = async (req, res) => {
 const getProductsHistory = async (req, res) => {
   try {
     const historyProducts = await Product.find({
+      status: { $in: ["approved", "preApproved", "declined"] },
       deleted: false,
     }).sort({ createdAt: -1 });
     if (historyProducts?.length) {
-      res.status(200).json({ success: 1, message: "All Products History", historyProducts });
+      res
+        .status(200)
+        .json({ success: 1, message: "All Products History", historyProducts });
     } else {
       res.status(200).json({ success: 0, message: "No data Found" });
     }
@@ -293,56 +296,46 @@ const getSoldProducts = async (req, res) => {
 
 const updateProductStatus = async (req, res) => {
   try {
-    const { id, status, imageNames } = req.body;
+    const { id, status } = req.body;
+
     if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
-      return res
-        .status(400)
-        .json({ success: 0, message: "Invalid product ID." });
+      return res.status(400).json({ success: 0, message: "Invalid product ID." });
     }
     if (!["approved", "declined", "preApproved"].includes(status)) {
       return res.status(400).json({
         success: 0,
-        message:
-          "Invalid status. Valid values( approved, preApproved & declined)",
+        message: "Invalid status. Valid values are: approved, preApproved, and declined",
       });
     }
-    const product = await findProductById(id);
+
+    const product = await Product.findById(id);
     if (!product) {
-      return res
-        .status(404)
-        .json({ success: 0, message: "Product not found." });
+      return res.status(404).json({ success: 0, message: "Product not found." });
     }
+
     product.status = status;
+    await product.save();
 
-    if (status === "approved" && !imageNames) {
-      imageNames = product.imageNames;
-    }
-
-    if (imageNames) {
-      product.imageNames = imageNames; // This should update the imageNames field
-    }
-    const updatedProduct = await updateProduct(product);
-
-    const user = await findUserById(updatedProduct.posterId);
+    const user = await User.findById(product.posterId);
     if (!user) {
       console.log("User who posted that product not found.");
     }
     if (process.env.SMTP2GO_API_KEY) {
-      if (updatedProduct?.status === "approved") {
+      if (status === "approved") {
         await sendEmail({
-          updatedProduct,
+          updatedProduct: product,
           user,
           emailSubject: "Product Review Status",
           emailMsg: EmailData?.pendingToApproved,
         });
       }
-      if (updatedProduct?.status === "declined") {
+      if (status === "declined") {
         const updatedPendingToDeclinedEmailMsg = {
           ...EmailData?.pendingToDeclined,
           "2ndText": `Reason not justified <br>`,
         };
         await sendEmail({
-          updatedProduct,
+          updatedProduct: product,
           user,
           emailSubject: "Product Review Status",
           emailMsg: updatedPendingToDeclinedEmailMsg,
@@ -351,10 +344,11 @@ const updateProductStatus = async (req, res) => {
     } else {
       console.warn("SMTP2GO API key not found. Email sending disabled.");
     }
+
     res.status(200).json({
       success: 1,
       message: `Product status updated to: ${status}`,
-      product: updatedProduct,
+      product,
     });
   } catch (error) {
     console.error(error);
