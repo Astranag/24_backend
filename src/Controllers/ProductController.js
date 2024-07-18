@@ -821,6 +821,34 @@ const getProductsBySubadminAndStatus = async (req, res) => {
   }
 };
 
+const updateSubadminEmail = async (req, res) => {
+  try {
+    const { id, subadminEmail } = req.body;
+
+    if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
+      return res.status(400).json({ success: 0, message: "Invalid product ID." });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ success: 0, message: "Product not found." });
+    }
+
+    product.subadminEmail = subadminEmail;
+    await product.save();
+
+    res.status(200).json({
+      success: 1,
+      message: `Product subadminEmail updated to: ${subadminEmail}`,
+      product,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: 0, message: "Internal server error." });
+  }
+};
+
+
 export {
   addNewProduct,
   getAllProducts,
@@ -830,6 +858,7 @@ export {
   getProductsHistory,
   updateProductById,
   updateProductStatus,
+  updateSubadminEmail,
   getSoldProducts,
   confirmProductPayment,
   declineProductPayment,

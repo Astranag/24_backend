@@ -9,6 +9,7 @@ import {
   getProductsHistory,
   updateProductById,
   updateProductStatus,
+  updateSubadminEmail,
   getSoldProducts,
   confirmProductPayment,
   declineProductPayment,
@@ -29,6 +30,7 @@ router.post("/history/:id", deleteProductsHistory);
 router.get("/sold", getSoldProducts);
 router.put("/update/:id", updateProductById);
 router.put("/status", updateProductStatus);
+router.put("/update-subadmin-email", updateSubadminEmail);
 router.put("/confirm/payment", confirmProductPayment);
 router.put("/decline/payment", declineProductPayment);
 router.get("/by-subadmin", getProductsBySubadminEmail);
