@@ -79,13 +79,13 @@ const logoutSubadmin = (req, res) => {
 
 const updateSubadmin = async (req, res) => {
     try {
-        const { subadminId, ...updateFields } = req.body;
+        const { userId, ...updateFields } = req.body; // Change subadminId to userId to match frontend
 
-        if (!subadminId) {
+        if (!userId) {
             return res.status(400).json({ success: 0, message: 'Please provide the subadmin ID.' });
         }
 
-        const updatedSubadmin = await Subadmin.findByIdAndUpdate(subadminId, updateFields, { new: true });
+        const updatedSubadmin = await Subadmin.findByIdAndUpdate(userId, updateFields, { new: true });
 
         if (!updatedSubadmin) {
             return res.status(404).json({ success: 0, message: 'Subadmin not found.' });
@@ -97,6 +97,7 @@ const updateSubadmin = async (req, res) => {
         res.status(500).json({ success: 0, message: 'Internal server error.' });
     }
 };
+
 
 const checkSubadmin = async (req, res) => {
     const { email, password } = req.body;
