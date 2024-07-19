@@ -6,6 +6,7 @@ import CategoryRoutes from "./CategoryRoutes.js"
 import OrderRoutes from "./OrderRoutes.js"
 import KlarnaRoutes from "./KlarnaRoutes.js"
 import DiscountCodesRoutes from "./DiscountCodeRoutes.js"
+import SubadminRoutes from "./SubadminRoutes.js"
 
 // import GoogleRoutes from "./GoogleRoutes.js"
 // import FacebookRoutes from "./FacebookRoutes.js"
@@ -21,5 +22,6 @@ router.use("/category", CategoryRoutes);
 router.use("/review", ReviewRoutes);
 router.use("/klarna", KlarnaRoutes);
 router.use("/discountCodes", DiscountCodesRoutes);
+router.use("/subadmin", SubadminRoutes);
 
 export default router;
