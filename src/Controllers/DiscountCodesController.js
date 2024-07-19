@@ -64,26 +64,26 @@ export const updatePercentageCode = async (req, res) => {
 };
 
 export const deleteFlatRateCode = async (req, res) => {
-    try {
-      const { id } = req.params;
-      await FlatRateCodeModel.findByIdAndDelete(id);
-      res.status(200).json({ success: true, message: 'Flat rate code deleted successfully' });
-    } catch (error) {
-      console.error("Error deleting flat rate code:", error);
-      res.status(500).json({ success: false, message: 'Failed to delete flat rate code' });
-    }
-  };
-  
-  export const deletePercentageCode = async (req, res) => {
-    try {
-      const { id } = req.params;
-      await PercentageCodeModel.findByIdAndDelete(id);
-      res.status(200).json({ success: true, message: 'Percentage code deleted successfully' });
-    } catch (error) {
-      console.error("Error deleting percentage code:", error);
-      res.status(500).json({ success: false, message: 'Failed to delete percentage code' });
-    }
-  };
+  try {
+    const { id } = req.params;
+    await FlatRateCodes.findByIdAndDelete(id);
+    res.status(200).json({ success: true, message: 'Flat rate code deleted successfully' });
+  } catch (error) {
+    console.error("Error deleting flat rate code:", error);
+    res.status(500).json({ success: false, message: 'Failed to delete flat rate code' });
+  }
+};
+
+export const deletePercentageCode = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await PercentageCodes.findByIdAndDelete(id);
+    res.status(200).json({ success: true, message: 'Percentage code deleted successfully' });
+  } catch (error) {
+    console.error("Error deleting percentage code:", error);
+    res.status(500).json({ success: false, message: 'Failed to delete percentage code' });
+  }
+};
 
   export const checkDiscountCode = async (req, res) => {
     const { code } = req.params;

@@ -233,4 +233,66 @@ const findProductById = async (productId) => {
         throw error;
     }
 };
-export { createNewOrder, getCustomerOrders, getAllOrders };
+
+const confirmOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params; // Assuming the order ID is passed as a URL parameter
+
+    // Validate the orderId, assuming it should be a string of 24 hex characters
+    if (!orderId || !/^[0-9a-fA-F]{24}$/.test(orderId)) {
+      return res.status(400).json({ success: false, message: "Invalid order ID." });
+    }
+
+    // Find the order by ID
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+
+    // Check if the customer exists
+    const customer = await User.findById(order.customerId);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: "Customer not found for this order." });
+    }
+
+    // Update the order status to "confirmed"
+    order.orderStatus = 'confirmed';
+    await order.save();
+
+    // Respond with the updated order
+    res.json({ success: true, message: "Order status updated to confirmed.", order });
+  } catch (error) {
+    console.error("Failed to confirm order status:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+const deleteOrder = async (req, res) => {
+    try {
+        const { orderId } = req.params; // Assuming the order ID is passed as a URL parameter
+
+        // Validate the orderId, assuming it should be a string of 24 hex characters
+        if (!orderId || !/^[0-9a-fA-F]{24}$/.test(orderId)) {
+            return res.status(400).json({ success: false, message: "Invalid order ID." });
+        }
+
+        // Find the order by ID
+        const order = await Order.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: "Order not found." });
+        }
+
+        // Update the order status to "cancelled"
+        order.orderStatus = 'cancelled';
+        await order.save();
+
+
+        // Respond with a success message
+        res.status(200).json({ success: true, message: "Order cancelled successfully." });
+    } catch (error) {
+        console.error("Failed to delete order:", error);
+        res.status(500).json({ success: false, message: "Internal server error." });
+    }
+};
+
+export { createNewOrder, getCustomerOrders, getAllOrders, confirmOrder, deleteOrder };

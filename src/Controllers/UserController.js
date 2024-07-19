@@ -95,6 +95,25 @@ const updateUser = async (req, res) => {
     }
 };
 
+const checkAdmin = async (req, res) => {
+    const { email, password } = req.body;
 
+    const user = await User.findOne({ email });
 
-export { registerUser, loginUser, logoutUser, updateUser };
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (user.role !== 'admin') {
+        return res.status(403).json({ error: 'User is not an admin' });
+    }
+
+    // Create a copy of the user object without the password
+    const userWithoutPassword = user.toObject();
+    delete userWithoutPassword.password;
+
+    // Include the user data in the response
+    res.json({ success: true, user: userWithoutPassword });
+};
+
+export { registerUser, loginUser, logoutUser, updateUser, checkAdmin };

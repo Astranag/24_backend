@@ -44,6 +44,7 @@ const addNewProduct = async (req, res) => {
       location,
       pickUpSlots,
       mainImageIndex,
+      subadminEmail
     } = req.body;
 
     console.log("Received new product data:", req.body);
@@ -93,20 +94,12 @@ const addNewProduct = async (req, res) => {
         success: false,
         message: "Invalid JSON format in dimension field.",
       });
-      return res.status(400).json({
-        success: false,
-        message: "Invalid JSON format in dimension field.",
-      });
     }
 
     try {
       parsedLocation = JSON.parse(location);
     } catch (error) {
       console.error("Error parsing location:", error);
-      return res.status(400).json({
-        success: false,
-        message: "Invalid JSON format in location field.",
-      });
       return res.status(400).json({
         success: false,
         message: "Invalid JSON format in location field.",
@@ -118,10 +111,6 @@ const addNewProduct = async (req, res) => {
         parsedPickUpSlots = JSON.parse(pickUpSlots);
       } catch (error) {
         console.error("Error parsing pickUpSlots:", error);
-        return res.status(400).json({
-          success: false,
-          message: "Invalid JSON format in pickUpSlots field.",
-        });
         return res.status(400).json({
           success: false,
           message: "Invalid JSON format in pickUpSlots field.",
@@ -148,6 +137,7 @@ const addNewProduct = async (req, res) => {
       dimension: parsedDimension,
       location: parsedLocation,
       pickUpSlots: parsedPickUpSlots,
+      subadminEmail // Include subadminEmail in the new product object
     });
 
     // Log the new product object for verification
@@ -173,7 +163,7 @@ const addNewProduct = async (req, res) => {
 
 const getAllProducts = async (req, res) => {
   try {
-    const allProducts = await Product.find({ deleted: false });
+    const allProducts = await Product.find({});
     if (allProducts) {
       res.status(200).json({ message: "All Products", allProducts });
     }
@@ -207,21 +197,55 @@ const getProductsByUserId = async (req, res) => {
 
 const getAllApprovedProducts = async (req, res) => {
   try {
+    const { searchQuery } = req.query; // Get the search query from the request query parameter
+    const searchRegex = new RegExp(searchQuery, 'i'); // Create a case-insensitive regex pattern
+
     const approvedProducts = await Product.find({
-      status: { $in: ["approved", "preApproved", "deliveryNotApproved"] },
+      status: { $in: ['approved', 'preApproved', 'deliveryNotApproved'] },
       deleted: false,
+      $or: [
+        { title: searchRegex }, // Search in product title
+        { description: searchRegex }, // Search in product description
+        { addOns: { $elemMatch: { name: searchRegex } } }, // Search in add-on names
+        { category: searchRegex }, // Search in product category
+        { rooms: searchRegex }, // Search in product rooms
+      ],
     }).sort({ createdAt: -1 });
-    if (approvedProducts?.length) {
+
+    if (approvedProducts.length) {
       res.status(200).json({
         success: 1,
-        message: "All Approved Products",
+        message: 'Approved Products',
         approvedProducts,
       });
     } else {
-      res.status(200).json({ success: 0, message: "No data Found" });
+      res.status(200).json({ success: 0, message: 'No data Found' });
     }
   } catch (error) {
-    res.status(500).json({ success: 0, message: "Internal server error." });
+    res.status(500).json({ success: 0, message: 'Internal server error.' });
+  }
+};
+
+const getProductsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params; // Get the category from the request parameter
+    const products = await Product.find({
+      category,
+      status: { $in: ['approved', 'preApproved', 'deliveryNotApproved'] },
+      deleted: false,
+    }).sort({ createdAt: -1 });
+
+    if (products.length) {
+      res.status(200).json({
+        success: 1,
+        message: `Products in ${category} category`,
+        products,
+      });
+    } else {
+      res.status(200).json({ success: 0, message: 'No data Found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: 0, message: 'Internal server error.' });
   }
 };
 
@@ -306,56 +330,46 @@ const getSoldProducts = async (req, res) => {
 
 const updateProductStatus = async (req, res) => {
   try {
-    const { id, status, imageNames } = req.body;
+    const { id, status } = req.body;
+
     if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
-      return res
-        .status(400)
-        .json({ success: 0, message: "Invalid product ID." });
+      return res.status(400).json({ success: 0, message: "Invalid product ID." });
     }
     if (!["approved", "declined", "preApproved"].includes(status)) {
       return res.status(400).json({
         success: 0,
-        message:
-          "Invalid status. Valid values( approved, preApproved & declined)",
+        message: "Invalid status. Valid values are: approved, preApproved, and declined",
       });
     }
-    const product = await findProductById(id);
+
+    const product = await Product.findById(id);
     if (!product) {
-      return res
-        .status(404)
-        .json({ success: 0, message: "Product not found." });
+      return res.status(404).json({ success: 0, message: "Product not found." });
     }
+
     product.status = status;
+    await product.save();
 
-    if (status === "approved" && !imageNames) {
-      imageNames = product.imageNames;
-    }
-
-    if (imageNames) {
-      product.imageNames = imageNames; // This should update the imageNames field
-    }
-    const updatedProduct = await updateProduct(product);
-
-    const user = await findUserById(updatedProduct.posterId);
+    const user = await User.findById(product.posterId);
     if (!user) {
       console.log("User who posted that product not found.");
     }
     if (process.env.SMTP2GO_API_KEY) {
-      if (updatedProduct?.status === "approved") {
+      if (status === "approved") {
         await sendEmail({
-          updatedProduct,
+          updatedProduct: product,
           user,
           emailSubject: "Product Review Status",
           emailMsg: EmailData?.pendingToApproved,
         });
       }
-      if (updatedProduct?.status === "declined") {
+      if (status === "declined") {
         const updatedPendingToDeclinedEmailMsg = {
           ...EmailData?.pendingToDeclined,
           "2ndText": `Reason not justified <br>`,
         };
         await sendEmail({
-          updatedProduct,
+          updatedProduct: product,
           user,
           emailSubject: "Product Review Status",
           emailMsg: updatedPendingToDeclinedEmailMsg,
@@ -364,10 +378,11 @@ const updateProductStatus = async (req, res) => {
     } else {
       console.warn("SMTP2GO API key not found. Email sending disabled.");
     }
+
     res.status(200).json({
       success: 1,
       message: `Product status updated to: ${status}`,
-      product: updatedProduct,
+      product,
     });
   } catch (error) {
     console.error(error);
@@ -583,7 +598,6 @@ const confirmProductPayment = async (req, res) => {
         .json({ success: 0, message: "Product not found." });
     }
 
-    product.status = "deliveryApproved";
     const updatedProduct = await updateProduct(product);
     if (product?.isPreApproved) {
       const productOwner = await findUserById(product.posterId);
@@ -808,6 +822,67 @@ function updateNestedFields(target, source) {
   }
 }
 
+const getProductsBySubadminEmail = async (req, res) => {
+  try {
+    const subadminEmail = req.query.subadminEmail;
+    const products = await Product.find({ subadminEmail: subadminEmail });
+    res.json({ success: true, products: products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getProductsBySubadminAndStatus = async (req, res) => {
+  try {
+    const subadminEmail = req.query.subadminEmail;
+    const products = await Product.find({
+      subadminEmail: subadminEmail,
+      status: { $ne: "pending" },
+      deleted: false,
+    }).sort({ createdAt: -1 });
+
+    if (products.length) {
+      res.status(200).json({
+        success: 1,
+        message: "Products filtered by subadmin email and status",
+        products,
+      });
+    } else {
+      res.status(200).json({ success: 0, message: "No data found" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: 0, message: "Internal server error" });
+  }
+};
+
+const updateSubadminEmail = async (req, res) => {
+  try {
+    const { id, subadminEmail } = req.body;
+
+    if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
+      return res.status(400).json({ success: 0, message: "Invalid product ID." });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ success: 0, message: "Product not found." });
+    }
+
+    product.subadminEmail = subadminEmail;
+    await product.save();
+
+    res.status(200).json({
+      success: 1,
+      message: `Product subadminEmail updated to: ${subadminEmail}`,
+      product,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: 0, message: "Internal server error." });
+  }
+};
+
+
 export {
   addNewProduct,
   getAllProducts,
@@ -815,10 +890,14 @@ export {
   getAllApprovedProducts,
   getAllPendingProducts,
   getProductsHistory,
+  getProductsByCategory, 
   updateProductById,
   updateProductStatus,
+  updateSubadminEmail,
   getSoldProducts,
   confirmProductPayment,
   declineProductPayment,
   deleteProductsHistory,
+  getProductsBySubadminEmail,
+  getProductsBySubadminAndStatus,
 };
