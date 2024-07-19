@@ -7,6 +7,7 @@ import {
   getProductsByUserId,
   getAllPendingProducts,
   getProductsHistory,
+  getProductsByCategory, 
   updateProductById,
   updateProductStatus,
   updateSubadminEmail,
@@ -27,6 +28,7 @@ router.get("/approveds", getAllApprovedProducts);
 router.get("/pendings", getAllPendingProducts);
 router.get("/history", getProductsHistory);
 router.post("/history/:id", deleteProductsHistory);
+router.get("/category/:category", getProductsByCategory); 
 router.get("/sold", getSoldProducts);
 router.put("/update/:id", updateProductById);
 router.put("/status", updateProductStatus);
